@@ -42,7 +42,7 @@
 
 <style>
   form {
-    max-width: 380px;
+    width: min(380px, calc(100% - 2rem));
     margin: 12vh auto 0;
     display: grid;
     gap: 1rem;
