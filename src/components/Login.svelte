@@ -2,46 +2,44 @@
   import { defaultServerUrl, pb, setServerUrl } from '../lib/pb';
 
   let server = $state(defaultServerUrl());
-  let email = $state('');
-  let password = $state('');
   let error = $state('');
   let busy = $state(false);
 
-  async function submit(e: SubmitEvent) {
-    e.preventDefault();
+  async function login() {
     busy = true;
     error = '';
     try {
       setServerUrl(server);
-      await pb.collection('users').authWithPassword(email, password);
+      // Called straight from the click handler so the OAuth popup isn't blocked.
+      await pb.collection('users').authWithOAuth2({ provider: 'google' });
     } catch (err) {
-      error = (err as { status?: number }).status === 0 ? 'Server nicht erreichbar' : 'Login fehlgeschlagen';
+      const status = (err as { status?: number }).status;
+      error =
+        status === 0
+          ? 'Server nicht erreichbar'
+          : status === 400 || status === 403
+            ? 'Dieser Google-Account ist nicht freigeschaltet'
+            : 'Login fehlgeschlagen';
     } finally {
       busy = false;
     }
   }
 </script>
 
-<form class="card" onsubmit={submit}>
+<div class="card login">
   <h1>🌙 Schlaf-Tracker</h1>
-  <label>
-    Server
-    <input bind:value={server} type="url" required placeholder="https://pb.example.com" />
-  </label>
-  <label>
-    E-Mail
-    <input bind:value={email} type="email" autocomplete="username" required />
-  </label>
-  <label>
-    Passwort
-    <input bind:value={password} type="password" autocomplete="current-password" required />
-  </label>
+  <button class="primary" onclick={login} disabled={busy}>
+    {busy ? '…' : 'Mit Google anmelden'}
+  </button>
   {#if error}<p class="error">{error}</p>{/if}
-  <button class="primary" disabled={busy}>{busy ? '…' : 'Anmelden'}</button>
-</form>
+  <details>
+    <summary class="muted">Server</summary>
+    <input bind:value={server} type="url" placeholder="https://pb.example.com" />
+  </details>
+</div>
 
 <style>
-  form {
+  .login {
     width: min(380px, calc(100% - 2rem));
     margin: 12vh auto 0;
     display: grid;
@@ -57,5 +55,14 @@
   .error {
     color: var(--danger);
     margin: 0;
+  }
+
+  details {
+    font-size: 0.85rem;
+  }
+
+  summary {
+    cursor: pointer;
+    margin-bottom: 0.5rem;
   }
 </style>

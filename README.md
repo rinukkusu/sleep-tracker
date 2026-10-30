@@ -16,7 +16,9 @@ Stack: Svelte 5, Vite, `vite-plugin-pwa`, PocketBase JS SDK.
 1. [PocketBase](https://pocketbase.io/docs/) (≥ 0.23) herunterladen und z.B. nach `pocketbase/` entpacken.
 2. Den Ordner `pocketbase/pb_migrations` daneben liegen lassen - beim Start wird automatisch die Collection `sleeps` angelegt und die öffentliche Registrierung abgeschaltet.
 3. Starten: `./pocketbase serve --http=0.0.0.0:8090`
-4. Im Admin-UI (`/_/`) einen Superuser anlegen und unter **users** die Accounts für alle Eltern anlegen.
+4. Superuser anlegen: `./pocketbase superuser upsert EMAIL PASS`
+5. Google-Login: in der Google Cloud Console einen OAuth-Client (Webanwendung) mit Redirect-URI `https://<pb-domain>/api/oauth2-redirect` anlegen und Client-ID/Secret im Admin-UI unter *users → Options → OAuth2 → Google* eintragen.
+6. Unter **users** für jeden Elternteil einen Eintrag mit der Google-Mail-Adresse anlegen (Passwort egal, wird nicht benutzt). Andere Google-Accounts können sich nicht anmelden.
 
 ## Hosting
 
