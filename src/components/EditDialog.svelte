@@ -54,7 +54,12 @@
 
 <dialog bind:this={dialog} onclose={onclose}>
   <form onsubmit={save}>
-    <h2>{isNew ? 'Eintrag nachtragen' : 'Eintrag bearbeiten'}</h2>
+    <div class="title">
+      <h2>{isNew ? 'Eintrag nachtragen' : 'Eintrag bearbeiten'}</h2>
+      {#if !isNew}
+        <button type="button" class="danger" onclick={remove}>Löschen</button>
+      {/if}
+    </div>
 
     <div class="kinds">
       {#each ['night', 'nap'] as const as k}
@@ -81,10 +86,6 @@
     {#if error}<p class="error">{error}</p>{/if}
 
     <div class="actions">
-      {#if !isNew}
-        <button type="button" class="danger" onclick={remove}>Löschen</button>
-      {/if}
-      <span></span>
       <button type="button" class="ghost" onclick={() => dialog.close()}>Abbrechen</button>
       <button class="primary">Speichern</button>
     </div>
@@ -107,7 +108,12 @@
 
   form {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.9rem;
+  }
+
+  input {
+    min-width: 0;
   }
 
   h2 {
@@ -140,12 +146,19 @@
     margin: 0;
   }
 
-  .actions {
+  .title {
     display: flex;
-    gap: 0.5rem;
+    justify-content: space-between;
+    align-items: center;
   }
 
-  .actions span {
-    flex: 1;
+  .title button {
+    padding: 0.4rem 0.5rem;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
   }
 </style>

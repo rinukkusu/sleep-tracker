@@ -44,10 +44,12 @@
   <section class="card day">
     <button class="head" onclick={() => (expanded = expanded === +day ? null : +day)}>
       <strong>{fmtDay(day)}</strong>
-      <span class="muted tabular">
-        {fmtDuration(stats.total)}
-        {#if stats.total}· 🌙 {fmtDuration(stats.byKind.night)} · ☀️ {stats.naps}× {fmtDuration(stats.byKind.nap)}{/if}
-      </span>
+      <span class="total tabular">{fmtDuration(stats.total)}</span>
+      {#if stats.total}
+        <span class="detail muted tabular">
+          🌙 {fmtDuration(stats.byKind.night)} · ☀️ {stats.naps}× {fmtDuration(stats.byKind.nap)}
+        </span>
+      {/if}
     </button>
     <DayBar {day} segments={stats.segments} now={clock.now} onselect={(s) => (editing = s)} />
 
@@ -132,14 +134,23 @@
   }
 
   .head {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr auto;
     align-items: baseline;
-    gap: 0.5rem;
+    gap: 0.15rem 0.5rem;
     background: transparent;
     padding: 0;
     font-size: 0.9rem;
-    text-align: right;
+    text-align: left;
+  }
+
+  .total {
+    font-weight: 600;
+  }
+
+  .detail {
+    grid-column: 1 / -1;
+    font-size: 0.8rem;
   }
 
   ul {
