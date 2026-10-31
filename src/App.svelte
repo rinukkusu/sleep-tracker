@@ -51,7 +51,9 @@
     const running = authed ? store.running : null;
     const lastWake = authed ? store.lastWake : null;
     void Sleep.setState({
-      running: running ? { id: running.id, start: Date.parse(running.start), kind: running.kind } : null,
+      running: running
+        ? { id: running.id, start: Date.parse(running.start), kind: running.kind, pauses: $state.snapshot(running.pauses ?? []) }
+        : null,
       lastWake: lastWake ? Date.parse(lastWake) : null,
     });
   });
@@ -59,7 +61,7 @@
   /** Starts/stops made from the widget or notification; upserts, so re-applying is harmless. */
   async function applyNativeActions() {
     const { actions } = await Sleep.takePendingActions();
-    for (const a of actions) store.put({ ...a, note: store.sessions[a.id]?.note ?? '' });
+    for (const a of actions) store.put({ ...a, pauses: a.pauses ?? [], note: store.sessions[a.id]?.note ?? '' });
   }
 
   $effect(() => {

@@ -2,7 +2,7 @@
   import { clock } from '../lib/clock.svelte';
   import { isNative } from '../lib/native';
   import { requestNotifyPermission } from '../lib/notify';
-  import { dayStats } from '../lib/stats';
+  import { dayStats, openPause, pausedMs, sleptMs } from '../lib/stats';
   import { store } from '../lib/store.svelte';
   import { defaultKind, fmtDuration, fmtTime, fmtTimer, kindIcon, kindLabel, startOfDay } from '../lib/time';
   import type { Kind, Sleep } from '../lib/types';
@@ -21,6 +21,7 @@
   }
 
   const running = $derived(store.running);
+  const paused = $derived(running ? openPause(running) : null);
   const today = $derived(startOfDay(clock.now));
   const stats = $derived(dayStats(store.sorted, today, clock.now));
 
@@ -33,6 +34,12 @@
       store.start(kind);
       void enableNotifications();
     }
+  }
+
+  function togglePause() {
+    navigator.vibrate?.(30);
+    if (paused) store.resume();
+    else store.pause();
   }
 
   function switchRunningKind() {
@@ -52,9 +59,14 @@
     <button class="kind-chip {running.kind}" onclick={switchRunningKind}>
       {kindIcon[running.kind]} {kindLabel[running.kind]}
     </button>
-    <div class="timer tabular">{fmtTimer(clock.now - Date.parse(running.start))}</div>
+    <div class="timer tabular" class:muted={paused}>{fmtTimer(sleptMs(running, clock.now))}</div>
     <button class="ghost since" onclick={() => (editing = running)}>
-      schläft seit {fmtTime(running.start)} <Icon name="edit" size={14} />
+      {#if paused}
+        Pause · wach seit {fmtTime(paused.start)}
+      {:else}
+        schläft seit {fmtTime(running.start)}{#if running.pauses?.length} · {fmtDuration(pausedMs(running, clock.now))} wach{/if}
+      {/if}
+      <Icon name="edit" size={14} />
     </button>
   {:else}
     <div class="kinds">
@@ -74,6 +86,12 @@
 <button class="big {running ? 'wake' : kind}" onclick={toggle}>
   {running ? 'Aufgewacht' : 'Schläft'}
 </button>
+
+{#if running}
+  <button class="pause" onclick={togglePause}>
+    {paused ? '▶ Schläft weiter' : '⏸ Kurz wach'}
+  </button>
+{/if}
 
 <section class="card today">
   <div class="row">
@@ -150,6 +168,14 @@
     color: #fff;
     box-shadow: 0 10px 40px rgb(0 0 0 / 0.35);
     transition: transform 0.1s;
+  }
+
+  .pause {
+    display: block;
+    margin: -1rem auto 2rem;
+    padding: 0.6rem 1.4rem;
+    border-radius: 999px;
+    font-size: 1rem;
   }
 
   .big:active {

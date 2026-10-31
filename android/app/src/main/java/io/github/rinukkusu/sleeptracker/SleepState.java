@@ -38,21 +38,37 @@ final class SleepState {
     long runningStart;
     String runningKind;
     long lastWake;
-    /** Kind of the sleep that was paused (native only), null when not paused. */
-    String pausedKind;
-    long pausedAt;
+    /** Short wake-ups of the running sleep: [{start, end}] as ISO strings, end null while awake. */
+    JSONArray runningPauses = new JSONArray();
 
     boolean isRunning() {
         return runningId != null;
     }
 
-    boolean isPaused() {
-        return !isRunning() && pausedKind != null;
+    /** Start of the pause still going on, 0 if she is asleep. */
+    long pausedSince() {
+        if (!isRunning()) return 0;
+        for (int i = 0; i < runningPauses.length(); i++) {
+            JSONObject p = runningPauses.optJSONObject(i);
+            if (p != null && p.isNull("end")) return parseIso(p.optString("start"));
+        }
+        return 0;
     }
 
-    /** Drops the pause once a newer sleep was started or finished elsewhere. */
-    void clearStalePause() {
-        if (isRunning() || lastWake > pausedAt) pausedKind = null;
+    boolean isPaused() {
+        return pausedSince() > 0;
+    }
+
+    /** Time asleep so far, without pauses. */
+    long sleptMs(long now) {
+        long ms = now - runningStart;
+        for (int i = 0; i < runningPauses.length(); i++) {
+            JSONObject p = runningPauses.optJSONObject(i);
+            if (p == null) continue;
+            long end = p.isNull("end") ? now : parseIso(p.optString("end"));
+            ms -= end - parseIso(p.optString("start"));
+        }
+        return Math.max(0, ms);
     }
 
     static SleepState load(Context ctx) {
@@ -62,8 +78,11 @@ final class SleepState {
         s.runningStart = p.getLong("running_start", 0);
         s.runningKind = p.getString("running_kind", "nap");
         s.lastWake = p.getLong("last_wake", 0);
-        s.pausedKind = p.getString("paused_kind", null);
-        s.pausedAt = p.getLong("paused_at", 0);
+        try {
+            s.runningPauses = new JSONArray(p.getString("running_pauses", "[]"));
+        } catch (JSONException ignored) {
+            // keep empty
+        }
         return s;
     }
 
@@ -74,8 +93,7 @@ final class SleepState {
             .putLong("running_start", runningStart)
             .putString("running_kind", runningKind)
             .putLong("last_wake", lastWake)
-            .putString("paused_kind", pausedKind)
-            .putLong("paused_at", pausedAt)
+            .putString("running_pauses", runningPauses.toString())
             .apply();
     }
 
@@ -90,41 +108,81 @@ final class SleepState {
             done.run();
             return;
         }
-        // Resuming a pause continues with the same kind as a new entry.
-        String kind = s.isPaused() ? s.pausedKind : defaultKind();
         s.runningId = newId();
         s.runningStart = System.currentTimeMillis();
-        s.runningKind = kind;
-        s.pausedKind = null;
+        s.runningKind = defaultKind();
+        s.runningPauses = new JSONArray();
         s.save(ctx);
-        enqueue(ctx, record(s.runningId, s.runningStart, 0, s.runningKind));
+        enqueue(ctx, s.runningRecord(0));
         afterChange(ctx, done);
     }
 
-    /** Ends the running sleep; with pause it can be resumed with the same kind. */
-    static synchronized void stop(Context ctx, boolean pause, Runnable done) {
+    /** Stopping during a pause means she stayed awake: the sleep ends where the pause began. */
+    static synchronized void stop(Context ctx, Runnable done) {
         SleepState s = load(ctx);
         if (!s.isRunning()) {
-            if (!pause && s.isPaused()) {
-                s.pausedKind = null;
-                s.save(ctx);
-                refreshUi(ctx);
-            }
             done.run();
             return;
         }
-        long end = Math.max(System.currentTimeMillis(), s.runningStart);
-        enqueue(ctx, record(s.runningId, s.runningStart, end, s.runningKind));
-        s.pausedKind = pause ? s.runningKind : null;
-        s.pausedAt = end;
+        long pausedSince = s.pausedSince();
+        long end = pausedSince > 0 ? pausedSince : Math.max(System.currentTimeMillis(), s.runningStart);
+        JSONArray pauses = new JSONArray();
+        for (int i = 0; i < s.runningPauses.length(); i++) {
+            JSONObject p = s.runningPauses.optJSONObject(i);
+            if (p != null && !p.isNull("end")) pauses.put(p);
+        }
+        s.runningPauses = pauses;
+        enqueue(ctx, s.runningRecord(end));
         s.runningId = null;
+        s.runningPauses = new JSONArray();
         s.lastWake = end;
         s.save(ctx);
         afterChange(ctx, done);
     }
 
+    /** Briefly awake: stays part of the same sleep. */
+    static synchronized void pause(Context ctx, Runnable done) {
+        SleepState s = load(ctx);
+        if (!s.isRunning() || s.isPaused()) {
+            done.run();
+            return;
+        }
+        try {
+            s.runningPauses.put(new JSONObject().put("start", iso(System.currentTimeMillis())).put("end", JSONObject.NULL));
+        } catch (JSONException e) {
+            throw new IllegalStateException(e);
+        }
+        s.save(ctx);
+        enqueue(ctx, s.runningRecord(0));
+        afterChange(ctx, done);
+    }
+
+    static synchronized void resume(Context ctx, Runnable done) {
+        SleepState s = load(ctx);
+        long pausedSince = s.pausedSince();
+        if (pausedSince == 0) {
+            done.run();
+            return;
+        }
+        for (int i = 0; i < s.runningPauses.length(); i++) {
+            JSONObject p = s.runningPauses.optJSONObject(i);
+            if (p == null || !p.isNull("end")) continue;
+            try {
+                p.put("end", iso(Math.max(System.currentTimeMillis(), pausedSince)));
+            } catch (JSONException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+        s.save(ctx);
+        enqueue(ctx, s.runningRecord(0));
+        afterChange(ctx, done);
+    }
+
+    /** Widget 1x1: asleep -> stop, paused -> resume, awake -> start. */
     static void toggle(Context ctx, Runnable done) {
-        if (load(ctx).isRunning()) stop(ctx, false, done);
+        SleepState s = load(ctx);
+        if (s.isPaused()) resume(ctx, done);
+        else if (s.isRunning()) stop(ctx, done);
         else start(ctx, done);
     }
 
@@ -180,7 +238,8 @@ final class SleepState {
         JSONObject body = new JSONObject()
             .put("start_at", rec.getString("start"))
             .put("end_at", rec.isNull("end") ? "" : rec.getString("end"))
-            .put("kind", rec.getString("kind"));
+            .put("kind", rec.getString("kind"))
+            .put("pauses", rec.optJSONArray("pauses") != null ? rec.getJSONArray("pauses") : new JSONArray());
 
         Request update = new Request.Builder()
             .url(url + rec.getString("id"))
@@ -203,13 +262,14 @@ final class SleepState {
         }
     }
 
-    private static JSONObject record(String id, long start, long end, String kind) {
+    private JSONObject runningRecord(long end) {
         try {
             return new JSONObject()
-                .put("id", id)
-                .put("start", iso(start))
+                .put("id", runningId)
+                .put("start", iso(runningStart))
                 .put("end", end > 0 ? iso(end) : JSONObject.NULL)
-                .put("kind", kind);
+                .put("kind", runningKind)
+                .put("pauses", new JSONArray(runningPauses.toString()));
         } catch (JSONException e) {
             throw new IllegalStateException(e);
         }
@@ -252,6 +312,17 @@ final class SleepState {
         SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
         f.setTimeZone(TimeZone.getTimeZone("UTC"));
         return f.format(new Date(ms));
+    }
+
+    static long parseIso(String v) {
+        SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
+        f.setTimeZone(TimeZone.getTimeZone("UTC"));
+        try {
+            Date d = f.parse(v);
+            return d != null ? d.getTime() : 0;
+        } catch (java.text.ParseException e) {
+            return 0;
+        }
     }
 
     static String time(long ms) {

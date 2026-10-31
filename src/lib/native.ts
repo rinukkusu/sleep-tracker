@@ -1,5 +1,5 @@
 import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor/core';
-import type { Kind } from './types';
+import type { Kind, Pause } from './types';
 
 /** A change made from the widget or notification while the web app wasn't looking. */
 export interface PendingAction {
@@ -7,11 +7,12 @@ export interface PendingAction {
   start: string;
   end: string | null;
   kind: Kind;
+  pauses: Pause[];
 }
 
 interface SleepPlugin {
   setAuth(options: { baseUrl: string; token: string }): Promise<void>;
-  setState(options: { running: { id: string; start: number; kind: Kind } | null; lastWake: number | null }): Promise<void>;
+  setState(options: { running: { id: string; start: number; kind: Kind; pauses: Pause[] } | null; lastWake: number | null }): Promise<void>;
   takePendingActions(): Promise<{ actions: PendingAction[] }>;
   requestNotificationPermission(): Promise<{ granted: boolean }>;
   bringToFront(): Promise<void>;

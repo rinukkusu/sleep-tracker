@@ -26,21 +26,37 @@ final class SleepNotifier {
         ensureChannel(ctx);
 
         boolean night = "night".equals(s.runningKind);
+        long now = System.currentTimeMillis();
+        long pausedSince = s.pausedSince();
+        boolean paused = pausedSince > 0;
+        String kind = night ? "Nachtschlaf" : "Nickerchen";
         NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_moon)
             .setColor(0xFF6F7DFF)
-            .setContentTitle(night ? "🌙 Schläft" : "☀️ Schläft")
-            .setContentText((night ? "Nachtschlaf" : "Nickerchen") + " seit " + SleepState.time(s.runningStart))
-            .setWhen(s.runningStart)
-            .setShowWhen(true)
-            .setUsesChronometer(true)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setContentIntent(openApp(ctx))
-            .addAction(0, "Aufgewacht", SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_STOP));
+            .setContentIntent(openApp(ctx));
+        if (paused) {
+            // Counts the time awake during the pause.
+            b.setContentTitle("⏸ Kurz wach")
+                .setContentText(kind + " · " + (s.sleptMs(now) / 60_000) + " min geschlafen")
+                .setWhen(pausedSince)
+                .setShowWhen(true)
+                .setUsesChronometer(true)
+                .addAction(0, "Schläft weiter", SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_RESUME));
+        } else {
+            // Chronometer shows the time asleep without pauses.
+            b.setContentTitle(night ? "🌙 Schläft" : "☀️ Schläft")
+                .setContentText(kind + " seit " + SleepState.time(s.runningStart))
+                .setWhen(now - s.sleptMs(now))
+                .setShowWhen(true)
+                .setUsesChronometer(true)
+                .addAction(0, "Kurz wach", SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_PAUSE));
+        }
+        b.addAction(0, "Aufgewacht", SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_STOP));
         if (Build.VERSION.SDK_INT >= 36) {
             // Android 16 "Live Update": shows the running time as a chip in the status bar.
             Bundle extras = new Bundle();

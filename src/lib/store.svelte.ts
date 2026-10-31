@@ -1,7 +1,8 @@
 import { ClientResponseError, type RecordModel } from 'pocketbase';
 import { newId, pb } from './pb';
 import { addDays, startOfDay } from './time';
-import type { Kind, Sleep } from './types';
+import { openPause } from './stats';
+import type { Kind, Pause, Sleep } from './types';
 
 const COLLECTION = 'sleeps';
 const CACHE_KEY = 'sleeps_cache';
@@ -40,11 +41,12 @@ function fromRecord(r: RecordModel): Sleep {
     end: pbDate(r.end_at),
     kind: r.kind === 'night' ? 'night' : 'nap',
     note: r.note ?? '',
+    pauses: Array.isArray(r.pauses) ? (r.pauses as Pause[]) : [],
   };
 }
 
 function toRecord(s: Sleep) {
-  return { start_at: s.start, end_at: s.end ?? '', kind: s.kind, note: s.note };
+  return { start_at: s.start, end_at: s.end ?? '', kind: s.kind, note: s.note, pauses: s.pauses ?? [] };
 }
 
 function isNetworkError(e: unknown) {
@@ -113,14 +115,32 @@ class SleepStore {
   }
 
   start(kind: Kind, at = new Date()) {
-    this.put({ id: newId(), start: at.toISOString(), end: null, kind, note: '' });
+    this.put({ id: newId(), start: at.toISOString(), end: null, kind, note: '', pauses: [] });
   }
 
+  /** Stopping during a pause means she stayed awake: the sleep ends where the pause began. */
   stop(at = new Date()) {
     for (const s of this.sorted.filter((s) => !s.end)) {
-      const end = Math.max(+at, Date.parse(s.start));
-      this.put({ ...s, end: new Date(end).toISOString() });
+      const open = openPause(s);
+      const pauses = (s.pauses ?? []).filter((p) => p !== open);
+      const end = open ? Date.parse(open.start) : Math.max(+at, Date.parse(s.start));
+      this.put({ ...s, end: new Date(end).toISOString(), pauses });
     }
+  }
+
+  /** Briefly awake - stays part of the same sleep. */
+  pause(at = new Date()) {
+    const s = this.running;
+    if (!s || openPause(s)) return;
+    this.put({ ...s, pauses: [...(s.pauses ?? []), { start: at.toISOString(), end: null }] });
+  }
+
+  resume(at = new Date()) {
+    const s = this.running;
+    const open = s && openPause(s);
+    if (!s || !open) return;
+    const end = new Date(Math.max(+at, Date.parse(open.start))).toISOString();
+    this.put({ ...s, pauses: (s.pauses ?? []).map((p) => (p === open ? { ...p, end } : p)) });
   }
 
   put(s: Sleep) {

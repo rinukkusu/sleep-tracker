@@ -54,38 +54,44 @@ public class SleepWidget extends AppWidgetProvider {
             : style == Style.VERTICAL ? R.layout.widget_sleep_vertical : R.layout.widget_sleep;
         RemoteViews v = new RemoteViews(ctx.getPackageName(), layout);
 
-        long since = s.isRunning() ? s.runningStart : s.lastWake;
+        long now = System.currentTimeMillis();
+        long pausedSince = s.pausedSince();
+        boolean paused = pausedSince > 0;
         boolean night = "night".equals(s.runningKind);
 
         if (style == Style.COMPACT) {
-            v.setTextViewText(R.id.widget_label, s.isRunning() ? (night ? "🌙" : "😴") : s.isPaused() ? "⏸" : "☀️");
+            v.setTextViewText(R.id.widget_label, paused ? "⏸" : s.isRunning() ? (night ? "🌙" : "😴") : "☀️");
             v.setInt(R.id.widget_root, "setBackgroundResource", s.isRunning() ? R.drawable.widget_compact_wake : R.drawable.widget_compact_sleep);
-            // The whole 1x1 widget toggles.
+            // The whole 1x1 widget toggles (during a pause: back to sleep).
             v.setOnClickPendingIntent(R.id.widget_root, SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_TOGGLE));
         } else {
-            boolean controls = s.isRunning() || s.isPaused();
-            if (s.isRunning()) {
+            String since;
+            if (paused) {
+                v.setTextViewText(R.id.widget_label, "⏸ Kurz wach");
+                since = "wach seit " + SleepState.time(pausedSince);
+            } else if (s.isRunning()) {
                 v.setTextViewText(R.id.widget_label, night ? "🌙 Schläft" : "☀️ Nickerchen");
-            } else if (s.isPaused()) {
-                v.setTextViewText(R.id.widget_label, "⏸ Pause");
+                since = "seit " + SleepState.time(s.runningStart);
             } else {
                 v.setTextViewText(R.id.widget_label, "Wach");
+                since = s.lastWake > 0 ? "seit " + SleepState.time(s.lastWake) : "noch keine Einträge";
             }
-            // Awake: one "Schläft" button. Asleep or paused: pause/resume and stop icons.
-            v.setViewVisibility(R.id.widget_button, controls ? View.GONE : View.VISIBLE);
-            v.setViewVisibility(R.id.widget_controls, controls ? View.VISIBLE : View.GONE);
-            v.setImageViewResource(R.id.widget_pause, s.isPaused() ? R.drawable.ic_widget_play : R.drawable.ic_widget_pause);
-            v.setContentDescription(R.id.widget_pause, s.isPaused() ? "Weiter schlafen" : "Pause");
-            v.setTextViewText(R.id.widget_since, since > 0 ? "seit " + SleepState.time(since) : "noch keine Einträge");
+            v.setTextViewText(R.id.widget_since, since);
+            // Awake: one "Schläft" button. Asleep: pause/resume and stop icons.
+            v.setViewVisibility(R.id.widget_button, s.isRunning() ? View.GONE : View.VISIBLE);
+            v.setViewVisibility(R.id.widget_controls, s.isRunning() ? View.VISIBLE : View.GONE);
+            v.setImageViewResource(R.id.widget_pause, paused ? R.drawable.ic_widget_play : R.drawable.ic_widget_pause);
+            v.setContentDescription(R.id.widget_pause, paused ? "Schläft weiter" : "Kurz wach");
             v.setOnClickPendingIntent(R.id.widget_button, SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_TOGGLE));
-            v.setOnClickPendingIntent(R.id.widget_pause, SleepActionReceiver.pendingIntent(ctx, s.isPaused() ? SleepActionReceiver.ACTION_RESUME : SleepActionReceiver.ACTION_PAUSE));
+            v.setOnClickPendingIntent(R.id.widget_pause, SleepActionReceiver.pendingIntent(ctx, paused ? SleepActionReceiver.ACTION_RESUME : SleepActionReceiver.ACTION_PAUSE));
             v.setOnClickPendingIntent(R.id.widget_stop, SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_STOP));
             v.setOnClickPendingIntent(R.id.widget_root, SleepNotifier.openApp(ctx));
         }
 
-        if (since > 0) {
-            long base = SystemClock.elapsedRealtime() - (System.currentTimeMillis() - since);
-            v.setChronometer(R.id.widget_chrono, base, null, true);
+        // Asleep: time slept without pauses, frozen during a pause. Awake: time since waking up.
+        long elapsed = s.isRunning() ? s.sleptMs(now) : s.lastWake > 0 ? now - s.lastWake : -1;
+        if (elapsed >= 0) {
+            v.setChronometer(R.id.widget_chrono, SystemClock.elapsedRealtime() - elapsed, null, !paused);
             v.setViewVisibility(R.id.widget_chrono, View.VISIBLE);
         } else {
             v.setChronometer(R.id.widget_chrono, SystemClock.elapsedRealtime(), null, false);

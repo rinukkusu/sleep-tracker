@@ -23,9 +23,9 @@ public class SleepActionReceiver extends BroadcastReceiver {
         PendingResult result = goAsync();
         Runnable done = result::finish;
         String action = intent.getAction();
-        if (ACTION_STOP.equals(action)) SleepState.stop(ctx, false, done);
-        else if (ACTION_PAUSE.equals(action)) SleepState.stop(ctx, true, done);
-        else if (ACTION_RESUME.equals(action)) SleepState.start(ctx, done);
+        if (ACTION_STOP.equals(action)) SleepState.stop(ctx, done);
+        else if (ACTION_PAUSE.equals(action)) SleepState.pause(ctx, done);
+        else if (ACTION_RESUME.equals(action)) SleepState.resume(ctx, done);
         else if (ACTION_TOGGLE.equals(action)) SleepState.toggle(ctx, done);
         else done.run();
     }

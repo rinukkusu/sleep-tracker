@@ -1,5 +1,5 @@
 import { fmtDuration, fmtTime, kindIcon, kindLabel } from './time';
-import type { Kind } from './types';
+import type { Kind, Pause } from './types';
 
 // Shared by the app and the service worker (push updates).
 
@@ -10,6 +10,19 @@ export interface NotifySleep {
   start: string;
   end?: string | null;
   kind: Kind;
+  pauses?: Pause[] | null;
+}
+
+/** [time asleep, start of the pause still going on] */
+function slept(s: NotifySleep, end: number): [number, number | null] {
+  let ms = end - parseDate(s.start);
+  let open: number | null = null;
+  for (const p of s.pauses ?? []) {
+    const a = parseDate(p.start);
+    if (!p.end) open = a;
+    ms -= (p.end ? parseDate(p.end) : end) - a;
+  }
+  return [Math.max(0, ms), open];
 }
 
 /** Accepts ISO strings as well as PocketBase's "2026-10-30 21:32:23.638Z". */
@@ -19,11 +32,12 @@ export function parseDate(v: string): number {
 
 export function runningNotification(s: NotifySleep, now = Date.now()): [string, NotificationOptions] {
   const start = parseDate(s.start);
+  const [ms, pausedAt] = slept(s, now);
   return [
-    `${kindIcon[s.kind]} Schläft seit ${fmtDuration(now - start)}`,
+    pausedAt ? `⏸ Kurz wach seit ${fmtTime(pausedAt)}` : `${kindIcon[s.kind]} Schläft seit ${fmtDuration(ms)}`,
     {
       tag: SLEEP_TAG,
-      body: `${kindLabel[s.kind]} seit ${fmtTime(start)}`,
+      body: pausedAt ? `${fmtDuration(ms)} geschlafen (${kindLabel[s.kind]})` : `${kindLabel[s.kind]} seit ${fmtTime(start)}`,
       icon: 'pwa-192x192.png',
       badge: 'badge-96x96.png',
       silent: true,
@@ -36,13 +50,12 @@ export function runningNotification(s: NotifySleep, now = Date.now()): [string, 
 }
 
 export function awakeNotification(s: NotifySleep): [string, NotificationOptions] {
-  const start = parseDate(s.start);
   const end = s.end ? parseDate(s.end) : Date.now();
   return [
     `☀️ Aufgewacht um ${fmtTime(end)}`,
     {
       tag: SLEEP_TAG,
-      body: `${fmtDuration(end - start)} geschlafen (${kindLabel[s.kind]})`,
+      body: `${fmtDuration(slept(s, end)[0])} geschlafen (${kindLabel[s.kind]})`,
       icon: 'pwa-192x192.png',
       badge: 'badge-96x96.png',
       silent: true,

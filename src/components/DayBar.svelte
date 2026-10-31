@@ -29,6 +29,9 @@
       onclick={() => onselect?.(seg.sleep)}
       aria-label="Eintrag bearbeiten"
     ></button>
+    {#each seg.gaps as gap}
+      <div class="gap" style:left={pct(gap.from)} style:width={pct(gap.to - gap.from)}></div>
+    {/each}
   {/each}
   {#if nowPos !== null}
     <div class="now" style:left={pct(nowPos)}></div>
@@ -64,6 +67,16 @@
 
   .seg.nap {
     background: var(--nap);
+  }
+
+  /* Briefly awake within a sleep */
+  .gap {
+    position: absolute;
+    top: 25%;
+    bottom: 25%;
+    min-width: 1px;
+    background: var(--awake);
+    pointer-events: none;
   }
 
   .seg.running {

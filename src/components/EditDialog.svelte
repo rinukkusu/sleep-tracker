@@ -2,7 +2,7 @@
   import { untrack } from 'svelte';
   import { newId } from '../lib/pb';
   import { store } from '../lib/store.svelte';
-  import { defaultKind, fromLocalInput, kindIcon, kindLabel, toLocalInput } from '../lib/time';
+  import { defaultKind, fmtTime, fromLocalInput, kindIcon, kindLabel, toLocalInput } from '../lib/time';
   import type { Kind, Sleep } from '../lib/types';
 
   /** `sleep` null = new entry */
@@ -17,12 +17,14 @@
     end: new Date().toISOString(),
     kind: defaultKind(new Date(Date.now() - 3600_000)),
     note: '',
+    pauses: [],
   };
 
   let kind = $state<Kind>(initial.kind);
   let start = $state(toLocalInput(initial.start));
   let end = $state(initial.end ? toLocalInput(initial.end) : '');
   let note = $state(initial.note);
+  let pauses = $state((initial.pauses ?? []).map((p) => ({ ...p })));
   let error = $state('');
 
   $effect(() => {
@@ -41,7 +43,7 @@
       error = 'Es läuft schon ein Schlaf - bitte ein Ende angeben';
       return;
     }
-    store.put({ ...initial, kind, start: s, end: en, note: note.trim() });
+    store.put({ ...initial, kind, start: s, end: en, note: note.trim(), pauses: $state.snapshot(pauses) });
     dialog.close();
   }
 
@@ -78,6 +80,17 @@
       <input type="datetime-local" bind:value={end} />
       {#if !end}<small>leer = schläft noch</small>{/if}
     </label>
+    {#if pauses.length}
+      <div class="pauses">
+        <span>Kurz wach</span>
+        {#each pauses as p, i (p.start)}
+          <div class="pause">
+            <span class="tabular">{fmtTime(p.start)} – {p.end ? fmtTime(p.end) : 'jetzt'}</span>
+            <button type="button" class="ghost" onclick={() => pauses.splice(i, 1)} aria-label="Pause entfernen">✕</button>
+          </div>
+        {/each}
+      </div>
+    {/if}
     <label>
       Notiz
       <input bind:value={note} placeholder="optional" maxlength="500" />
@@ -139,6 +152,22 @@
 
   small {
     color: var(--muted);
+  }
+
+  .pauses {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .pause {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--muted);
+  }
+
+  .pause button {
+    padding: 0.2rem 0.6rem;
   }
 
   .error {

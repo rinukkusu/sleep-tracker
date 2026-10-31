@@ -1,6 +1,6 @@
 <script lang="ts">
   import { clock } from '../lib/clock.svelte';
-  import { dayStats, endMs } from '../lib/stats';
+  import { dayStats, pausedMs, sleptMs } from '../lib/stats';
   import { store } from '../lib/store.svelte';
   import { addDays, fmtDay, fmtDuration, fmtTime, kindIcon, startOfDay } from '../lib/time';
   import type { Sleep } from '../lib/types';
@@ -60,7 +60,9 @@
             <button onclick={() => (editing = sleep)}>
               <span>{kindIcon[sleep.kind]}</span>
               <span class="tabular">{fmtTime(sleep.start)} – {sleep.end ? fmtTime(sleep.end) : 'jetzt'}</span>
-              <span class="muted tabular">{fmtDuration(endMs(sleep, clock.now) - Date.parse(sleep.start))}</span>
+              <span class="muted tabular">
+                {fmtDuration(sleptMs(sleep, clock.now))}{#if sleep.pauses?.length} · {fmtDuration(pausedMs(sleep, clock.now))} wach{/if}
+              </span>
               {#if sleep.note}<span class="note muted">{sleep.note}</span>{/if}
             </button>
           </li>

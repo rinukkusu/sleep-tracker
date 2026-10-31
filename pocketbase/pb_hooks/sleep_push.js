@@ -4,7 +4,17 @@
 const PUSH_URL = 'http://127.0.0.1:8091';
 
 function sleepJson(r) {
-  return { id: r.id, start: r.getString('start_at'), end: r.getString('end_at') || null, kind: r.getString('kind') };
+  let pauses = [];
+  try {
+    pauses = JSON.parse(r.getString('pauses') || '[]') || [];
+  } catch (_) {}
+  return {
+    id: r.id,
+    start: r.getString('start_at'),
+    end: r.getString('end_at') || null,
+    kind: r.getString('kind'),
+    pauses: pauses,
+  };
 }
 
 function currentState(app) {

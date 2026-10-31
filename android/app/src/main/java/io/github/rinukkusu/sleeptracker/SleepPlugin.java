@@ -48,12 +48,14 @@ public class SleepPlugin extends Plugin {
             s.runningId = running.getString("id");
             s.runningStart = running.optLong("start");
             s.runningKind = running.getString("kind", "nap");
+            JSONArray pauses = running.optJSONArray("pauses");
+            s.runningPauses = pauses != null ? pauses : new JSONArray();
         } else {
             s.runningId = null;
+            s.runningPauses = new JSONArray();
         }
         Long lastWake = call.getLong("lastWake");
         s.lastWake = lastWake != null ? lastWake : 0;
-        s.clearStalePause();
         s.save(getContext());
         SleepState.refreshUi(getContext());
         call.resolve();
