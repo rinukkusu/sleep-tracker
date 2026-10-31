@@ -50,3 +50,17 @@ npm run dev
 
 Web-Notifications können keinen live laufenden Timer anzeigen. Deshalb zeigt die Notification die Startzeit an.
 Für einen echten Chronometer müsste man die App z.B. mit Capacitor verpacken und ein kleines natives Plugin (`setUsesChronometer`) schreiben.
+
+## Push (laufende Schlafdauer in der Notification)
+
+Solange ein Schlaf läuft, pusht PocketBase jede Minute die aktuelle Dauer an alle Geräte - auch wenn die App geschlossen ist. Änderungen vom anderen Handy kommen sofort an.
+
+- `pocketbase/pb_hooks/` nach `pb_hooks/` neben PocketBase legen (bzw. `--hooksDir` setzen)
+- Den Push-Sender aus `push/` starten - er verschlüsselt die Pushes und erzeugt beim ersten Start die VAPID-Keys in `/data`:
+
+```bash
+docker build -t pb-push push/
+docker run -d --name pb-push --restart unless-stopped --network host -v /opt/pb-push/data:/data pb-push
+```
+
+Er lauscht nur auf `127.0.0.1:8091` und braucht keine Zugangsdaten zu PocketBase.
