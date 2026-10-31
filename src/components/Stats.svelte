@@ -15,6 +15,7 @@
     type Tip,
   } from '../lib/charts';
   import { isNative, Sleep as SleepPlugin } from '../lib/native';
+  import { lastStatus } from '../lib/ota';
   import { median, predictNext, toSpans } from '../lib/predict';
   import { untrack } from 'svelte';
   import { store } from '../lib/store.svelte';
@@ -235,6 +236,7 @@
 
 <p class="muted small center version">
   {version ? `Version ${version} · ` : ''}Web {webVersion}
+  {#if isNative && lastStatus()}<br />Update-Check {lastStatus()}{/if}
 </p>
 
 <div class="tip" bind:this={tipEl}></div>

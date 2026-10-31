@@ -3,7 +3,7 @@
   import { store } from './lib/store.svelte';
   import { ensurePushSubscription, syncNotification } from './lib/notify';
   import { isNative, Sleep } from './lib/native';
-  import { checkForUpdates } from './lib/ota';
+  import { applyNow, checkForUpdates } from './lib/ota';
   import Login from './components/Login.svelte';
   import Home from './components/Home.svelte';
   import History from './components/History.svelte';
@@ -16,6 +16,8 @@
   let nativeReady = $state(false);
   /** Native only: a new APK is needed for the latest version. */
   let apkUrl = $state<string | null>(null);
+  /** Native only: a new web part is downloaded and can be switched to. */
+  let readyId = $state<string | null>(null);
   let lastUpdateCheck = 0;
   let apkStatus = $state('');
 
@@ -36,10 +38,13 @@
   }
 
   function updateCheck() {
-    if (!isNative || Date.now() - lastUpdateCheck < 3600_000) return;
+    if (!isNative || Date.now() - lastUpdateCheck < 10 * 60_000) return;
     lastUpdateCheck = Date.now();
     checkForUpdates()
-      .then((u) => (apkUrl = u.apkUrl))
+      .then((u) => {
+        apkUrl = u.apkUrl;
+        readyId = u.readyId;
+      })
       .catch((e) => console.warn('update check failed', e));
   }
 
@@ -151,6 +156,9 @@
       <button class="ghost" onclick={logout} aria-label="Abmelden"><Icon name="logout" /></button>
     </header>
 
+    {#if readyId && !apkUrl}
+      <button class="update" onclick={() => applyNow(readyId!)}>Neue Version bereit - zum Neuladen tippen</button>
+    {/if}
     {#if apkUrl}
       <button class="update" onclick={installUpdate}>
         {apkStatus || 'Neue App-Version verfügbar - zum Installieren tippen'}
