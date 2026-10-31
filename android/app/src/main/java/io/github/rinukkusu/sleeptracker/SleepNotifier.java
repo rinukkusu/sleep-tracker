@@ -1,5 +1,6 @@
 package io.github.rinukkusu.sleeptracker;
 
+import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -12,7 +13,9 @@ import androidx.core.app.NotificationManagerCompat;
 
 /** Ongoing "schläft" notification with a native chronometer that ticks by itself. */
 final class SleepNotifier {
-    private static final String CHANNEL = "sleep_running";
+    // A channel's importance can't be changed once created, hence the new id.
+    private static final String CHANNEL = "sleep_timer";
+    private static final String OLD_CHANNEL = "sleep_running";
     private static final int ID = 1;
 
     static void update(Context ctx) {
@@ -76,11 +79,20 @@ final class SleepNotifier {
         return PendingIntent.getActivity(ctx, 0, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
+    /**
+     * Default importance: Android hides low-importance ("silent") notifications
+     * on the lock screen. No sound or vibration though, it's just a timer.
+     */
     private static void ensureChannel(Context ctx) {
         if (Build.VERSION.SDK_INT < 26) return;
-        NotificationChannel ch = new NotificationChannel(CHANNEL, "Laufender Schlaf", NotificationManager.IMPORTANCE_LOW);
+        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+        nm.deleteNotificationChannel(OLD_CHANNEL);
+        NotificationChannel ch = new NotificationChannel(CHANNEL, "Laufender Schlaf", NotificationManager.IMPORTANCE_DEFAULT);
         ch.setDescription("Stoppuhr, solange sie schläft");
+        ch.setSound(null, null);
+        ch.enableVibration(false);
         ch.setShowBadge(false);
-        ctx.getSystemService(NotificationManager.class).createNotificationChannel(ch);
+        ch.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        nm.createNotificationChannel(ch);
     }
 }
