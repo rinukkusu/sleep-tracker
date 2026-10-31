@@ -11,9 +11,15 @@
 
   pb.authStore.onChange(() => (authed = pb.authStore.isValid));
 
+  // An installed PWA can sit in the background for days, so the token is
+  // extended on every return to the foreground, not just on cold start.
+  function refreshAuth() {
+    if (pb.authStore.isValid) pb.collection('users').authRefresh().catch(() => {});
+  }
+
   $effect(() => {
     if (!authed) return;
-    pb.collection('users').authRefresh().catch(() => {});
+    refreshAuth();
     void store.init().then(handleStopParam);
     return () => store.teardown();
   });
@@ -38,7 +44,9 @@
   });
 
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') void syncNotification(store.running, true);
+    if (document.visibilityState !== 'visible') return;
+    refreshAuth();
+    void syncNotification(store.running, true);
   });
 
   function logout() {
