@@ -266,7 +266,8 @@ final class SleepState {
     }
 
     private static void upsert(String baseUrl, String token, JSONObject rec) throws Exception {
-        String url = baseUrl + "/api/collections/sleeps/records/";
+        // No trailing slash: PocketBase answers POST .../records/ with 404.
+        String url = baseUrl + "/api/collections/sleeps/records";
         JSONObject body = new JSONObject()
             .put("start_at", rec.getString("start"))
             .put("end_at", rec.isNull("end") ? "" : rec.getString("end"))
@@ -274,7 +275,7 @@ final class SleepState {
             .put("pauses", rec.optJSONArray("pauses") != null ? rec.getJSONArray("pauses") : new JSONArray());
 
         Request update = new Request.Builder()
-            .url(url + rec.getString("id"))
+            .url(url + "/" + rec.getString("id"))
             .header("Authorization", token)
             .patch(RequestBody.create(body.toString(), JSON))
             .build();
