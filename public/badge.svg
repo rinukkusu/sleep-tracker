@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <!-- Status bar badge: Android only uses the alpha channel, so this is a plain silhouette. -->
+  <mask id="crescent">
+    <rect width="96" height="96" fill="#fff"/>
+    <circle cx="60" cy="34" r="27" fill="#000"/>
+  </mask>
+  <circle cx="42" cy="52" r="34" fill="#fff" mask="url(#crescent)"/>
+  <path d="M68 22 Q68 32 78 32 Q68 32 68 42 Q68 32 58 32 Q68 32 68 22Z" fill="#fff"/>
+  <path d="M84 50 Q84 56 90 56 Q84 56 84 62 Q84 56 78 56 Q84 56 84 50Z" fill="#fff"/>
+</svg>
