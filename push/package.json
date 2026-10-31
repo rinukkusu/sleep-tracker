@@ -4,6 +4,7 @@
   "type": "module",
   "main": "index.mjs",
   "dependencies": {
+    "firebase-admin": "^14.5.0",
     "web-push": "^3.6.7"
   }
 }

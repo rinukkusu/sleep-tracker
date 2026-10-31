@@ -1,2 +1,5 @@
 /build/*
 !/build/.npmkeep
+
+# Firebase config, written by the Android workflow from a secret
+google-services.json

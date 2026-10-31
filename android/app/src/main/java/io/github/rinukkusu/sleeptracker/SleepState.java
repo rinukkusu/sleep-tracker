@@ -186,6 +186,35 @@ final class SleepState {
         else start(ctx, done);
     }
 
+    /**
+     * State pushed by the server (SleepMessagingService). Local changes that
+     * aren't uploaded yet are newer, so they win until they are synced.
+     */
+    static synchronized void applyRemote(Context ctx, java.util.Map<String, String> data) {
+        if (loadPending(ctx).length() > 0) {
+            if (syncPending(ctx)) refreshUi(ctx);
+            return;
+        }
+        SleepState s = load(ctx);
+        if ("running".equals(data.get("type"))) {
+            s.runningId = data.get("id");
+            s.runningStart = parseIso(data.get("start"));
+            s.runningKind = data.get("kind");
+            try {
+                s.runningPauses = new JSONArray(data.get("pauses") != null ? data.get("pauses") : "[]");
+            } catch (JSONException e) {
+                s.runningPauses = new JSONArray();
+            }
+        } else {
+            s.runningId = null;
+            s.runningPauses = new JSONArray();
+            long end = parseIso(data.get("end"));
+            if (end > 0) s.lastWake = end;
+        }
+        s.save(ctx);
+        refreshUi(ctx);
+    }
+
     /** Returns and clears queued changes for the web app. */
     static synchronized JSONArray takePending(Context ctx) {
         JSONArray pending = loadPending(ctx);

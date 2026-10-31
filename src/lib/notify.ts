@@ -37,7 +37,7 @@ export async function syncNotification(running: SleepEntry | null) {
 
 /** Registers this device for server pushes and stores the subscription in PocketBase. */
 export async function ensurePushSubscription() {
-  if (isNative) return;
+  if (isNative) return ensureFcmSubscription();
   if (!('PushManager' in window) || Notification.permission !== 'granted') return;
   const userId = pb.authStore.record?.id;
   if (!userId) return;
@@ -62,6 +62,22 @@ export async function ensurePushSubscription() {
     await pb.collection('push_subscriptions').create({ user: userId, endpoint, p256dh: keys.p256dh, auth: keys.auth });
   } catch (e) {
     console.warn('push subscription failed', e);
+  }
+}
+
+/** Android app: FCM data messages keep widget and notification current while it's closed. */
+async function ensureFcmSubscription() {
+  const userId = pb.authStore.record?.id;
+  if (!userId) return;
+  try {
+    const { token } = await Sleep.fcmToken();
+    const existing = await pb
+      .collection('push_subscriptions')
+      .getList(1, 1, { filter: pb.filter('endpoint = {:token}', { token }) });
+    if (existing.items.length) return;
+    await pb.collection('push_subscriptions').create({ user: userId, endpoint: token, kind: 'fcm' });
+  } catch (e) {
+    console.warn('FCM registration failed', e);
   }
 }
 

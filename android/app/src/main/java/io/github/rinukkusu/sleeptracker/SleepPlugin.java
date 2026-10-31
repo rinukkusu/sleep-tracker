@@ -113,6 +113,29 @@ public class SleepPlugin extends Plugin {
         });
     }
 
+    /** FCM token of this device, registered by the web app as a push subscription. */
+    @PluginMethod
+    public void fcmToken(PluginCall call) {
+        com.google.firebase.messaging.FirebaseMessaging messaging;
+        try {
+            messaging = com.google.firebase.messaging.FirebaseMessaging.getInstance();
+        } catch (IllegalStateException e) {
+            call.reject("Firebase not configured (built without google-services.json)", e);
+            return;
+        }
+        messaging
+            .getToken()
+            .addOnCompleteListener(task -> {
+                if (!task.isSuccessful()) {
+                    call.reject("no FCM token", task.getException());
+                    return;
+                }
+                JSObject ret = new JSObject();
+                ret.put("token", task.getResult());
+                call.resolve(ret);
+            });
+    }
+
     @PluginMethod
     public void setAuth(PluginCall call) {
         SleepState.setAuth(getContext(), call.getString("baseUrl"), call.getString("token"));

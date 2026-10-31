@@ -61,6 +61,7 @@
       updateCheck();
       void Sleep.setAuth({ baseUrl: pb.baseURL, token: pb.authStore.token });
       void Sleep.requestNotificationPermission();
+      void ensurePushSubscription();
       void store
         .init()
         .then(applyNativeActions)
