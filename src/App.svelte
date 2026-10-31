@@ -6,10 +6,11 @@
   import Login from './components/Login.svelte';
   import Home from './components/Home.svelte';
   import History from './components/History.svelte';
+  import Stats from './components/Stats.svelte';
   import Icon from './components/Icon.svelte';
 
   let authed = $state(pb.authStore.isValid);
-  let tab = $state<'now' | 'history'>('now');
+  let tab = $state<'now' | 'history' | 'stats'>('now');
   /** Native only: don't overwrite widget state before cache, server and pending widget actions are merged. */
   let nativeReady = $state(false);
 
@@ -119,14 +120,17 @@
 
     {#if tab === 'now'}
       <Home />
-    {:else}
+    {:else if tab === 'history'}
       <History />
+    {:else}
+      <Stats />
     {/if}
   </main>
 
   <nav>
-    <button class:active={tab === 'now'} onclick={() => (tab = 'now')}>Jetzt</button>
-    <button class:active={tab === 'history'} onclick={() => (tab = 'history')}>Verlauf</button>
+    <button class:active={tab === 'now'} onclick={() => (tab = 'now')}><Icon name="now" />Jetzt</button>
+    <button class:active={tab === 'history'} onclick={() => (tab = 'history')}><Icon name="history" />Verlauf</button>
+    <button class:active={tab === 'stats'} onclick={() => (tab = 'stats')}><Icon name="stats" />Statistik</button>
   </nav>
 {/if}
 
@@ -165,6 +169,11 @@
 
   nav button {
     flex: 1;
+    display: grid;
+    justify-items: center;
+    gap: 0.15rem;
+    padding: 0.45rem 0;
+    font-size: 0.8rem;
     background: transparent;
     color: var(--muted);
     font-weight: 600;

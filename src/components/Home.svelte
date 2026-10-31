@@ -2,6 +2,7 @@
   import { clock } from '../lib/clock.svelte';
   import { isNative } from '../lib/native';
   import { requestNotifyPermission } from '../lib/notify';
+  import { predictNext, toSpans } from '../lib/predict';
   import { dayStats, openPause, pausedMs, sleptMs } from '../lib/stats';
   import { store } from '../lib/store.svelte';
   import { defaultKind, fmtDuration, fmtTime, fmtTimer, kindIcon, kindLabel, startOfDay } from '../lib/time';
@@ -24,6 +25,8 @@
   const paused = $derived(running ? openPause(running) : null);
   const today = $derived(startOfDay(clock.now));
   const stats = $derived(dayStats(store.sorted, today, clock.now));
+  // Only recomputed when the entries change, not every clock tick.
+  const next = $derived(running ? null : predictNext(toSpans(store.sorted)));
 
   function toggle() {
     navigator.vibrate?.(30);
@@ -80,6 +83,11 @@
       {store.lastWake ? fmtDuration(clock.now - Date.parse(store.lastWake)) : '–'}
     </div>
     <div class="since muted">{store.lastWake ? `wach seit ${fmtTime(store.lastWake)}` : 'noch keine Einträge'}</div>
+    {#if next}
+      <div class="next">
+        {next.bedtime ? '🌙 Schlafenszeit' : '☀️ Nickerchen'} ca. <strong class="tabular">{fmtTime(next.at)}</strong>
+      </div>
+    {/if}
   {/if}
 </section>
 
@@ -132,6 +140,19 @@
 
   .since {
     font-size: 0.95rem;
+  }
+
+  .next {
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--surface-2);
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  .next strong {
+    color: var(--text);
   }
 
   .kinds {

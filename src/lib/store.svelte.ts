@@ -181,6 +181,20 @@ class SleepStore {
     }
   }
 
+  /** The whole history (for statistics), merged with local changes. Not kept in the store. */
+  async fetchAll(): Promise<Sleep[]> {
+    const all: Record<string, Sleep> = {};
+    try {
+      const records = await pb.collection(COLLECTION).getFullList({ sort: 'start_at', batch: 1000 });
+      for (const r of records) all[r.id] = fromRecord(r);
+    } catch (e) {
+      if (!isNetworkError(e)) console.warn('fetching history failed', e);
+    }
+    for (const s of Object.values($state.snapshot(this.sessions))) all[s.id] = s;
+    for (const op of this.queue) if (op.t === 'del') delete all[op.id];
+    return Object.values(all);
+  }
+
   private enqueue(op: Op) {
     // A newer op for the same id supersedes older queued ones.
     const id = opId(op);
