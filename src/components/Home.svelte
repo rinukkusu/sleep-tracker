@@ -92,6 +92,7 @@
     {#if next}
       <div class="next">
         {next.bedtime ? '🌙 Schlafenszeit' : '☀️ Nickerchen'} ca. <strong class="tabular">{fmtTime(next.at)}</strong>
+        {#if next.at > clock.now}<span class="tabular">· in {fmtDuration(next.at - clock.now)}</span>{/if}
       </div>
     {/if}
   {/if}
