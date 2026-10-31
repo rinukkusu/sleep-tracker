@@ -9,6 +9,7 @@ on:
       - public/**
       - package*.json
       - capacitor.config.ts
+      - scripts/**
       - .github/workflows/android.yml
   workflow_dispatch:
 
@@ -32,10 +33,24 @@ jobs:
 
       - run: npm ci
       - run: npm run check
+      - name: Native id
+        run: echo "NATIVE_ID=$(node scripts/native-id.mjs)" >> "$GITHUB_ENV"
       - run: npm run build
         env:
           VITE_PB_URL: ${{ vars.PB_URL }}
+          VITE_WEB_VERSION: ${{ github.sha }}
       - run: npx cap sync android
+
+      # Over-the-air update of the web part for APKs with the same native id (src/lib/ota.ts).
+      - name: Update bundle
+        env:
+          VERSION: ${{ github.sha }}
+          TAG: android-1.${{ github.run_number }}
+          APK: schlaf-tracker-1.${{ github.run_number }}.apk
+        run: |
+          (cd dist && zip -qr "$RUNNER_TEMP/bundle.zip" .)
+          node -e 'const e = process.env; console.log(JSON.stringify({ version: e.VERSION, nativeId: e.NATIVE_ID, tag: e.TAG, apk: e.APK, bundle: "bundle.zip" }))' > "$RUNNER_TEMP/latest.json"
+          cat "$RUNNER_TEMP/latest.json"
 
       # Without the keystore secrets only a debug APK is built (to check the build),
       # since updates must always be signed with the same key.
@@ -69,6 +84,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "android-1.${{ github.run_number }}" "$RUNNER_TEMP"/schlaf-tracker-*.apk \
+          gh release create "android-1.${{ github.run_number }}" "$RUNNER_TEMP"/schlaf-tracker-*.apk "$RUNNER_TEMP/bundle.zip" "$RUNNER_TEMP/latest.json" \
             --title "Android 1.${{ github.run_number }}" \
             --notes "${{ github.event.head_commit.message || 'Manual build' }}"

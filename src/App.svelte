@@ -2,7 +2,9 @@
   import { pb } from './lib/pb';
   import { store } from './lib/store.svelte';
   import { ensurePushSubscription, syncNotification } from './lib/notify';
+  import { Browser } from '@capacitor/browser';
   import { isNative, Sleep } from './lib/native';
+  import { checkForUpdates } from './lib/ota';
   import Login from './components/Login.svelte';
   import Home from './components/Home.svelte';
   import History from './components/History.svelte';
@@ -13,6 +15,17 @@
   let tab = $state<'now' | 'history' | 'stats'>('now');
   /** Native only: don't overwrite widget state before cache, server and pending widget actions are merged. */
   let nativeReady = $state(false);
+  /** Native only: a new APK is needed for the latest version. */
+  let apkUrl = $state<string | null>(null);
+  let lastUpdateCheck = 0;
+
+  function updateCheck() {
+    if (!isNative || Date.now() - lastUpdateCheck < 3600_000) return;
+    lastUpdateCheck = Date.now();
+    checkForUpdates()
+      .then((u) => (apkUrl = u.apkUrl))
+      .catch((e) => console.warn('update check failed', e));
+  }
 
   pb.authStore.onChange(() => {
     authed = pb.authStore.isValid;
@@ -29,6 +42,7 @@
     if (!authed) return;
     refreshAuth();
     if (isNative) {
+      updateCheck();
       void Sleep.setAuth({ baseUrl: pb.baseURL, token: pb.authStore.token });
       void Sleep.requestNotificationPermission();
       void store
@@ -93,8 +107,10 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     refreshAuth();
-    if (isNative) void applyNativeActions();
-    else void syncNotification(store.running);
+    if (isNative) {
+      void applyNativeActions();
+      updateCheck();
+    } else void syncNotification(store.running);
   });
 
   function logout() {
@@ -117,6 +133,12 @@
       {/if}
       <button class="ghost" onclick={logout} aria-label="Abmelden"><Icon name="logout" /></button>
     </header>
+
+    {#if apkUrl}
+      <button class="update" onclick={() => void Browser.open({ url: apkUrl! })}>
+        Neue App-Version verfügbar - zum Installieren tippen
+      </button>
+    {/if}
 
     {#if tab === 'now'}
       <Home />
@@ -146,6 +168,15 @@
     align-items: center;
     gap: 0.5rem;
     padding-top: env(safe-area-inset-top);
+  }
+
+  .update {
+    display: block;
+    width: 100%;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    text-align: left;
+    border: 1px solid var(--nap);
   }
 
   .title {

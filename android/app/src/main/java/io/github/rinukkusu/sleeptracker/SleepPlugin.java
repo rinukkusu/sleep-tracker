@@ -33,6 +33,15 @@ public class SleepPlugin extends Plugin {
         if (p != null) p.notifyListeners("pendingActions", new JSObject());
     }
 
+    /** Which native build this is, for over-the-air updates of the web part. */
+    @PluginMethod
+    public void info(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("nativeId", BuildConfig.NATIVE_ID);
+        ret.put("build", BuildConfig.VERSION_CODE);
+        call.resolve(ret);
+    }
+
     @PluginMethod
     public void setAuth(PluginCall call) {
         SleepState.setAuth(getContext(), call.getString("baseUrl"), call.getString("token"));

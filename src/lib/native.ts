@@ -11,6 +11,7 @@ export interface PendingAction {
 }
 
 interface SleepPlugin {
+  info(): Promise<{ nativeId: string; build: number }>;
   setAuth(options: { baseUrl: string; token: string }): Promise<void>;
   setState(options: { running: { id: string; start: number; kind: Kind; pauses: Pause[] } | null; lastWake: number | null }): Promise<void>;
   takePendingActions(): Promise<{ actions: PendingAction[] }>;
