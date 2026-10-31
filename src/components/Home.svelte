@@ -84,7 +84,7 @@
 </section>
 
 <button class="big {running ? 'wake' : kind}" onclick={toggle}>
-  {running ? 'Aufgewacht' : 'Schläft'}
+  {running ? 'Aufgewacht' : 'Schlaf starten'}
 </button>
 
 {#if running}
@@ -159,11 +159,11 @@
 
   .big {
     display: block;
-    width: min(70vw, 280px);
+    width: min(55vw, 220px);
     aspect-ratio: 1;
     margin: 0 auto 2rem;
     border-radius: 50%;
-    font-size: 1.7rem;
+    font-size: 1.4rem;
     font-weight: 600;
     color: #fff;
     box-shadow: 0 10px 40px rgb(0 0 0 / 0.35);
