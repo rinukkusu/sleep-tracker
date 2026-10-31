@@ -11,6 +11,7 @@
     "icons": "pwa-assets-generator"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.0",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@types/node": "^26.6.6",
     "@vite-pwa/assets-generator": "^2.0.0",
@@ -23,6 +24,10 @@
     "workbox-precaching": "^7.4.1"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/browser": "^8.0.5",
+    "@capacitor/core": "^8.6.0",
     "pocketbase": "^0.28.1"
   }
 }

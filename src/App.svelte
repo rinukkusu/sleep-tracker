@@ -2,6 +2,7 @@
   import { pb } from './lib/pb';
   import { store } from './lib/store.svelte';
   import { ensurePushSubscription, syncNotification } from './lib/notify';
+  import { isNative, Sleep } from './lib/native';
   import Login from './components/Login.svelte';
   import Home from './components/Home.svelte';
   import History from './components/History.svelte';
@@ -9,8 +10,13 @@
 
   let authed = $state(pb.authStore.isValid);
   let tab = $state<'now' | 'history'>('now');
+  /** Native only: don't overwrite widget state before cache, server and pending widget actions are merged. */
+  let nativeReady = $state(false);
 
-  pb.authStore.onChange(() => (authed = pb.authStore.isValid));
+  pb.authStore.onChange(() => {
+    authed = pb.authStore.isValid;
+    if (isNative) void Sleep.setAuth({ baseUrl: pb.baseURL, token: pb.authStore.isValid ? pb.authStore.token : '' });
+  });
 
   // An installed PWA can sit in the background for days, so the token is
   // extended on every return to the foreground, not just on cold start.
@@ -21,12 +27,43 @@
   $effect(() => {
     if (!authed) return;
     refreshAuth();
+    if (isNative) {
+      void Sleep.setAuth({ baseUrl: pb.baseURL, token: pb.authStore.token });
+      void Sleep.requestNotificationPermission();
+      void store
+        .init()
+        .then(applyNativeActions)
+        .then(() => (nativeReady = true));
+      const listener = Sleep.addListener('pendingActions', () => void applyNativeActions());
+      return () => {
+        store.teardown();
+        void listener.then((l) => l.remove());
+      };
+    }
     void ensurePushSubscription();
     void store.init().then(handleStopParam);
     return () => store.teardown();
   });
 
+  // Native: hand the state to the ongoing notification and the widget.
   $effect(() => {
+    if (!isNative || !nativeReady) return;
+    const running = authed ? store.running : null;
+    const lastWake = authed ? store.lastWake : null;
+    void Sleep.setState({
+      running: running ? { id: running.id, start: Date.parse(running.start), kind: running.kind } : null,
+      lastWake: lastWake ? Date.parse(lastWake) : null,
+    });
+  });
+
+  /** Starts/stops made from the widget or notification; upserts, so re-applying is harmless. */
+  async function applyNativeActions() {
+    const { actions } = await Sleep.takePendingActions();
+    for (const a of actions) store.put({ ...a, note: store.sessions[a.id]?.note ?? '' });
+  }
+
+  $effect(() => {
+    if (isNative) return;
     const running = authed ? store.running : null;
     void syncNotification(running);
     if (!running) return;
@@ -53,7 +90,8 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     refreshAuth();
-    void syncNotification(store.running);
+    if (isNative) void applyNativeActions();
+    else void syncNotification(store.running);
   });
 
   function logout() {

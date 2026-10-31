@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Schlaf-Tracker</string>
+    <string name="title_activity_main">Schlaf-Tracker</string>
+    <string name="package_name">io.github.rinukkusu.sleeptracker</string>
+    <string name="widget_description">Schlaf starten und stoppen, mit laufender Zeit</string>
+    <string name="custom_url_scheme">io.github.rinukkusu.sleeptracker</string>
+</resources>

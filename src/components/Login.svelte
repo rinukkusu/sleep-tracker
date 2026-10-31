@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Browser } from '@capacitor/browser';
+  import { isNative, Sleep } from '../lib/native';
   import { defaultServerUrl, pb, setServerUrl } from '../lib/pb';
 
   let server = $state(defaultServerUrl());
@@ -10,8 +12,18 @@
     error = '';
     try {
       setServerUrl(server);
-      // Called straight from the click handler so the OAuth popup isn't blocked.
-      await pb.collection('users').authWithOAuth2({ provider: 'google' });
+      if (isNative) {
+        // Google blocks logins inside a WebView, so the app uses a Custom Tab.
+        // PocketBase hands the result back to us over its realtime connection.
+        await pb.collection('users').authWithOAuth2({
+          provider: 'google',
+          urlCallback: (url) => void Browser.open({ url }),
+        });
+        await Sleep.bringToFront();
+      } else {
+        // Called straight from the click handler so the OAuth popup isn't blocked.
+        await pb.collection('users').authWithOAuth2({ provider: 'google' });
+      }
     } catch (err) {
       const { status, originalError } = err as { status?: number; originalError?: { message?: string } };
       error = /invalid provider/i.test(originalError?.message ?? '')

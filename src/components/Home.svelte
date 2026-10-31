@@ -1,5 +1,6 @@
 <script lang="ts">
   import { clock } from '../lib/clock.svelte';
+  import { isNative } from '../lib/native';
   import { requestNotifyPermission } from '../lib/notify';
   import { dayStats } from '../lib/stats';
   import { store } from '../lib/store.svelte';
@@ -11,11 +12,12 @@
 
   let kind = $state<Kind>(defaultKind());
   let editing = $state<Sleep | null>(null);
-  let permission = $state('Notification' in window ? Notification.permission : 'denied');
+  // The Android app asks for the permission itself on start.
+  let permission = $state(!isNative && 'Notification' in window ? Notification.permission : 'granted');
 
   async function enableNotifications() {
     await requestNotifyPermission();
-    permission = Notification.permission;
+    if (!isNative) permission = Notification.permission;
   }
 
   const running = $derived(store.running);

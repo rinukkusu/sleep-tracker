@@ -1,8 +1,13 @@
+import { isNative, Sleep } from './native';
 import { pb } from './pb';
 import { runningNotification, SLEEP_TAG } from './notification';
-import type { Sleep } from './types';
+import type { Sleep as SleepEntry } from './types';
 
 export async function requestNotifyPermission() {
+  if (isNative) {
+    await Sleep.requestNotificationPermission();
+    return;
+  }
   if ('Notification' in window && Notification.permission === 'default') {
     await Notification.requestPermission();
   }
@@ -13,7 +18,8 @@ export async function requestNotifyPermission() {
  * Shows or clears the "schläft seit …" notification. Called every minute while
  * the app is alive; in the background the server keeps it current via push.
  */
-export async function syncNotification(running: Sleep | null) {
+export async function syncNotification(running: SleepEntry | null) {
+  if (isNative) return;
   if (!('serviceWorker' in navigator) || !('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
   const reg = await navigator.serviceWorker.getRegistration();
@@ -31,6 +37,7 @@ export async function syncNotification(running: Sleep | null) {
 
 /** Registers this device for server pushes and stores the subscription in PocketBase. */
 export async function ensurePushSubscription() {
+  if (isNative) return;
   if (!('PushManager' in window) || Notification.permission !== 'granted') return;
   const userId = pb.authStore.record?.id;
   if (!userId) return;
