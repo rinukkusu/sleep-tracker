@@ -53,6 +53,7 @@ public class SleepPlugin extends Plugin {
         JSObject ret = new JSObject();
         ret.put("nativeId", BuildConfig.NATIVE_ID);
         ret.put("build", BuildConfig.VERSION_CODE);
+        ret.put("version", BuildConfig.VERSION_NAME);
         call.resolve(ret);
     }
 

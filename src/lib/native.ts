@@ -11,7 +11,7 @@ export interface PendingAction {
 }
 
 interface SleepPlugin {
-  info(): Promise<{ nativeId: string; build: number }>;
+  info(): Promise<{ nativeId: string; build: number; version: string }>;
   /** "permission": Android's settings for installing apps were opened instead. */
   installApk(options: { url: string }): Promise<{ status: 'permission' | 'installing' }>;
   setAuth(options: { baseUrl: string; token: string }): Promise<void>;

@@ -14,6 +14,7 @@
     sleepDays,
     type Tip,
   } from '../lib/charts';
+  import { isNative, Sleep } from '../lib/native';
   import { median, predictNext, toSpans } from '../lib/predict';
   import { untrack } from 'svelte';
   import { store } from '../lib/store.svelte';
@@ -28,6 +29,9 @@
   let loading = $state(true);
   let range = $state<Range>('1y');
   let width = $state(0);
+  let version = $state('');
+  const webVersion = (import.meta.env.VITE_WEB_VERSION ?? 'dev').slice(0, 7);
+  if (isNative) void Sleep.info().then((i) => (version = i.version));
 
   let pattern: HTMLCanvasElement;
   let weekly: SVGSVGElement;
@@ -221,6 +225,10 @@
   {/if}
 </div>
 
+<p class="muted small center version">
+  {version ? `Version ${version} · ` : ''}Web {webVersion}
+</p>
+
 <div class="tip" bind:this={tipEl}></div>
 
 <style>
@@ -354,6 +362,11 @@
 
   .records li span:last-child {
     text-align: right;
+  }
+
+  .version {
+    margin: 1.5rem 0 0;
+    opacity: 0.6;
   }
 
   .tip {
