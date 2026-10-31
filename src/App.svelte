@@ -1,7 +1,7 @@
 <script lang="ts">
   import { pb } from './lib/pb';
   import { store } from './lib/store.svelte';
-  import { syncNotification } from './lib/notify';
+  import { ensurePushSubscription, syncNotification } from './lib/notify';
   import Login from './components/Login.svelte';
   import Home from './components/Home.svelte';
   import History from './components/History.svelte';
@@ -21,12 +21,18 @@
   $effect(() => {
     if (!authed) return;
     refreshAuth();
+    void ensurePushSubscription();
     void store.init().then(handleStopParam);
     return () => store.teardown();
   });
 
   $effect(() => {
-    void syncNotification(authed ? store.running : null);
+    const running = authed ? store.running : null;
+    void syncNotification(running);
+    if (!running) return;
+    // Keep the duration in the title current while the app is alive.
+    const timer = setInterval(() => void syncNotification(store.running), 60_000);
+    return () => clearInterval(timer);
   });
 
   // "Aufgewacht" tapped in the notification while the app was closed.
@@ -47,7 +53,7 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     refreshAuth();
-    void syncNotification(store.running, true);
+    void syncNotification(store.running);
   });
 
   function logout() {

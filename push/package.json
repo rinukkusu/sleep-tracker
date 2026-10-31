@@ -1,0 +1,9 @@
+{
+  "name": "sleep-tracker-push",
+  "private": true,
+  "type": "module",
+  "main": "index.mjs",
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

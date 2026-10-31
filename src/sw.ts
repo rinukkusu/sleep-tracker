@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import { clientsClaim } from 'workbox-core';
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
+import { awakeNotification, runningNotification, type NotifySleep } from './lib/notification';
 
 declare let self: ServiceWorkerGlobalScope;
 
@@ -8,6 +9,15 @@ self.skipWaiting();
 clientsClaim();
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
+
+// Sent by PocketBase every minute while she sleeps and on every change made
+// on the other phone. Durations are computed here, so delayed pushes are still right.
+self.addEventListener('push', (event) => {
+  const data = event.data?.json() as { type: 'running' | 'awake'; sleep: NotifySleep | null } | undefined;
+  if (!data?.sleep) return;
+  const [title, options] = data.type === 'running' ? runningNotification(data.sleep) : awakeNotification(data.sleep);
+  event.waitUntil(self.registration.showNotification(title, options));
+});
 
 // "Aufgewacht" action stops the running session. The click time is passed
 // along so the end time is right even if the app takes a moment to open.

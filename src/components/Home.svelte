@@ -11,6 +11,12 @@
 
   let kind = $state<Kind>(defaultKind());
   let editing = $state<Sleep | null>(null);
+  let permission = $state('Notification' in window ? Notification.permission : 'denied');
+
+  async function enableNotifications() {
+    await requestNotifyPermission();
+    permission = Notification.permission;
+  }
 
   const running = $derived(store.running);
   const today = $derived(startOfDay(clock.now));
@@ -23,7 +29,7 @@
       kind = defaultKind();
     } else {
       store.start(kind);
-      void requestNotifyPermission();
+      void enableNotifications();
     }
   }
 
@@ -32,6 +38,12 @@
     store.put({ ...running, kind: running.kind === 'nap' ? 'night' : 'nap' });
   }
 </script>
+
+{#if permission === 'default'}
+  <button class="notify-banner" onclick={enableNotifications}>
+    Benachrichtigungen aktivieren, um den Schlaf auch bei geschlossener App zu sehen
+  </button>
+{/if}
 
 <section class="status">
   {#if running}
@@ -76,6 +88,15 @@
 {/if}
 
 <style>
+  .notify-banner {
+    display: block;
+    width: 100%;
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    text-align: left;
+    border: 1px solid var(--night);
+  }
+
   .status {
     display: grid;
     justify-items: center;
