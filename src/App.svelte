@@ -2,7 +2,6 @@
   import { pb } from './lib/pb';
   import { store } from './lib/store.svelte';
   import { ensurePushSubscription, syncNotification } from './lib/notify';
-  import { Browser } from '@capacitor/browser';
   import { isNative, Sleep } from './lib/native';
   import { checkForUpdates } from './lib/ota';
   import Login from './components/Login.svelte';
@@ -18,6 +17,23 @@
   /** Native only: a new APK is needed for the latest version. */
   let apkUrl = $state<string | null>(null);
   let lastUpdateCheck = 0;
+  let apkStatus = $state('');
+
+  async function installUpdate() {
+    if (!apkUrl || apkStatus.startsWith('Lädt')) return;
+    apkStatus = 'Lädt…';
+    const progress = await Sleep.addListener('apkProgress', (e) => {
+      if (e.percent >= 0) apkStatus = `Lädt… ${e.percent}%`;
+    });
+    try {
+      const { status } = await Sleep.installApk({ url: apkUrl });
+      apkStatus = status === 'permission' ? 'Bitte „Apps installieren“ erlauben und dann nochmal tippen' : '';
+    } catch {
+      apkStatus = 'Download fehlgeschlagen - nochmal tippen';
+    } finally {
+      void progress.remove();
+    }
+  }
 
   function updateCheck() {
     if (!isNative || Date.now() - lastUpdateCheck < 3600_000) return;
@@ -135,8 +151,8 @@
     </header>
 
     {#if apkUrl}
-      <button class="update" onclick={() => void Browser.open({ url: apkUrl! })}>
-        Neue App-Version verfügbar - zum Installieren tippen
+      <button class="update" onclick={installUpdate}>
+        {apkStatus || 'Neue App-Version verfügbar - zum Installieren tippen'}
       </button>
     {/if}
 

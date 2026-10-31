@@ -1,8 +1,12 @@
 package io.github.rinukkusu.sleeptracker;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
+import android.provider.Settings;
+import androidx.core.content.FileProvider;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
@@ -11,7 +15,16 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.ref.WeakReference;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.json.JSONArray;
 
 /** Bridge between the web app (src/lib/native.ts) and the native notification/widget. */
@@ -21,6 +34,7 @@ import org.json.JSONArray;
 )
 public class SleepPlugin extends Plugin {
     private static WeakReference<SleepPlugin> instance = new WeakReference<>(null);
+    private final ExecutorService downloads = Executors.newSingleThreadExecutor();
 
     @Override
     public void load() {
@@ -40,6 +54,62 @@ public class SleepPlugin extends Plugin {
         ret.put("nativeId", BuildConfig.NATIVE_ID);
         ret.put("build", BuildConfig.VERSION_CODE);
         call.resolve(ret);
+    }
+
+    /**
+     * Downloads a new APK and hands it to the system installer. The first time,
+     * Android asks to allow installing apps from this app instead.
+     */
+    @PluginMethod
+    public void installApk(PluginCall call) {
+        Context ctx = getContext();
+        String url = call.getString("url");
+        if (url == null) {
+            call.reject("url missing");
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= 26 && !ctx.getPackageManager().canRequestPackageInstalls()) {
+            Intent settings = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + ctx.getPackageName()));
+            getActivity().startActivity(settings);
+            JSObject ret = new JSObject();
+            ret.put("status", "permission");
+            call.resolve(ret);
+            return;
+        }
+        downloads.execute(() -> {
+            File apk = new File(ctx.getCacheDir(), "update.apk");
+            try (Response res = new OkHttpClient().newCall(new Request.Builder().url(url).build()).execute()) {
+                if (!res.isSuccessful() || res.body() == null) throw new IllegalStateException("download " + res.code());
+                long total = res.body().contentLength();
+                try (InputStream in = res.body().byteStream(); OutputStream out = new FileOutputStream(apk)) {
+                    byte[] buf = new byte[64 * 1024];
+                    long done = 0;
+                    int lastPercent = -1;
+                    for (int n; (n = in.read(buf)) != -1; ) {
+                        out.write(buf, 0, n);
+                        done += n;
+                        int percent = total > 0 ? (int) (done * 100 / total) : -1;
+                        if (percent != lastPercent) {
+                            lastPercent = percent;
+                            JSObject progress = new JSObject();
+                            progress.put("percent", percent);
+                            notifyListeners("apkProgress", progress);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                call.reject("Download fehlgeschlagen", e);
+                return;
+            }
+            Uri uri = FileProvider.getUriForFile(ctx, ctx.getPackageName() + ".fileprovider", apk);
+            Intent install = new Intent(Intent.ACTION_VIEW)
+                .setDataAndType(uri, "application/vnd.android.package-archive")
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(install);
+            JSObject ret = new JSObject();
+            ret.put("status", "installing");
+            call.resolve(ret);
+        });
     }
 
     @PluginMethod
