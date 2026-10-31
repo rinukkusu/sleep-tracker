@@ -54,7 +54,8 @@ jobs:
           APK: schlaf-tracker-1.${{ github.run_number }}.apk
         run: |
           (cd dist && zip -qr "$RUNNER_TEMP/bundle.zip" .)
-          node -e 'const e = process.env; console.log(JSON.stringify({ version: e.VERSION, nativeId: e.NATIVE_ID, tag: e.TAG, apk: e.APK, bundle: "bundle.zip" }))' > "$RUNNER_TEMP/latest.json"
+          export CHECKSUM=$(sha256sum "$RUNNER_TEMP/bundle.zip" | cut -d' ' -f1)
+          node -e 'const e = process.env; console.log(JSON.stringify({ version: e.VERSION, nativeId: e.NATIVE_ID, tag: e.TAG, apk: e.APK, bundle: "bundle.zip", checksum: e.CHECKSUM }))' > "$RUNNER_TEMP/latest.json"
           cat "$RUNNER_TEMP/latest.json"
 
       # Without the keystore secrets only a debug APK is built (to check the build),

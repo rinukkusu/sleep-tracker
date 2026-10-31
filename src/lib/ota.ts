@@ -18,6 +18,8 @@ interface Latest {
   tag: string;
   apk: string;
   bundle: string;
+  /** SHA-256 of bundle.zip, the updater refuses downloads without it */
+  checksum: string;
 }
 
 export interface UpdateState {
@@ -39,7 +41,10 @@ export function lastStatus(): string {
 }
 
 function setStatus(message: string) {
-  const at = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const at = new Date().toLocaleTimeString('de-DE', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
   try {
     localStorage.setItem(STATUS_KEY, `${at}: ${message}`);
   } catch {
@@ -67,7 +72,9 @@ export async function checkForUpdates(): Promise<UpdateState> {
   if (WEB_VERSION === 'dev') return none;
   try {
     // Native request: release downloads redirect to a host without CORS headers.
-    const res = await CapacitorHttp.get({ url: `${RELEASES}/latest/download/latest.json` });
+    const res = await CapacitorHttp.get({
+      url: `${RELEASES}/latest/download/latest.json`,
+    });
     if (res.status !== 200) {
       setStatus(`latest.json HTTP ${res.status}`);
       return none;
@@ -77,7 +84,10 @@ export async function checkForUpdates(): Promise<UpdateState> {
 
     if (latest.nativeId !== nativeId) {
       setStatus(`neue App-Version ${latest.tag} nötig`);
-      return { apkUrl: `${RELEASES}/download/${latest.tag}/${latest.apk}`, readyId: null };
+      return {
+        apkUrl: `${RELEASES}/download/${latest.tag}/${latest.apk}`,
+        readyId: null,
+      };
     }
     if (latest.version === WEB_VERSION) {
       setStatus('aktuell');
@@ -88,7 +98,12 @@ export async function checkForUpdates(): Promise<UpdateState> {
     const ready = bundles.find((b) => b.version === latest.version && (b.status === 'pending' || b.status === 'success'));
     setStatus(ready ? `${latest.version.slice(0, 7)} bereit` : `lädt ${latest.version.slice(0, 7)}…`);
     const next =
-      ready ?? (await CapacitorUpdater.download({ url: `${RELEASES}/download/${latest.tag}/${latest.bundle}`, version: latest.version }));
+      ready ??
+      (await CapacitorUpdater.download({
+        url: `${RELEASES}/download/${latest.tag}/${latest.bundle}`,
+        version: latest.version,
+        checksum: latest.checksum,
+      }));
     await CapacitorUpdater.next({ id: next.id });
     setStatus(`${latest.version.slice(0, 7)} bereit`);
     return { apkUrl: null, readyId: next.id };
