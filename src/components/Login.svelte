@@ -13,8 +13,8 @@
       // Called straight from the click handler so the OAuth popup isn't blocked.
       await pb.collection('users').authWithOAuth2({ provider: 'google' });
     } catch (err) {
-      const { status, message } = err as { status?: number; message?: string };
-      error = /provider/i.test(message ?? '')
+      const { status, originalError } = err as { status?: number; originalError?: { message?: string } };
+      error = /invalid provider/i.test(originalError?.message ?? '')
         ? 'Google-Login ist auf dem Server noch nicht eingerichtet'
         : status === 0
           ? 'Server nicht erreichbar'
