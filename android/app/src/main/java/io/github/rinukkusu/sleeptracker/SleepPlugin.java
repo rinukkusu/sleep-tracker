@@ -53,6 +53,7 @@ public class SleepPlugin extends Plugin {
         }
         Long lastWake = call.getLong("lastWake");
         s.lastWake = lastWake != null ? lastWake : 0;
+        s.clearStalePause();
         s.save(getContext());
         SleepState.refreshUi(getContext());
         call.resolve();

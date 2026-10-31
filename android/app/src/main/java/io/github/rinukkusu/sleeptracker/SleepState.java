@@ -38,9 +38,21 @@ final class SleepState {
     long runningStart;
     String runningKind;
     long lastWake;
+    /** Kind of the sleep that was paused (native only), null when not paused. */
+    String pausedKind;
+    long pausedAt;
 
     boolean isRunning() {
         return runningId != null;
+    }
+
+    boolean isPaused() {
+        return !isRunning() && pausedKind != null;
+    }
+
+    /** Drops the pause once a newer sleep was started or finished elsewhere. */
+    void clearStalePause() {
+        if (isRunning() || lastWake > pausedAt) pausedKind = null;
     }
 
     static SleepState load(Context ctx) {
@@ -50,6 +62,8 @@ final class SleepState {
         s.runningStart = p.getLong("running_start", 0);
         s.runningKind = p.getString("running_kind", "nap");
         s.lastWake = p.getLong("last_wake", 0);
+        s.pausedKind = p.getString("paused_kind", null);
+        s.pausedAt = p.getLong("paused_at", 0);
         return s;
     }
 
@@ -60,6 +74,8 @@ final class SleepState {
             .putLong("running_start", runningStart)
             .putString("running_kind", runningKind)
             .putLong("last_wake", lastWake)
+            .putString("paused_kind", pausedKind)
+            .putLong("paused_at", pausedAt)
             .apply();
     }
 
@@ -74,22 +90,33 @@ final class SleepState {
             done.run();
             return;
         }
+        // Resuming a pause continues with the same kind as a new entry.
+        String kind = s.isPaused() ? s.pausedKind : defaultKind();
         s.runningId = newId();
         s.runningStart = System.currentTimeMillis();
-        s.runningKind = defaultKind();
+        s.runningKind = kind;
+        s.pausedKind = null;
         s.save(ctx);
         enqueue(ctx, record(s.runningId, s.runningStart, 0, s.runningKind));
         afterChange(ctx, done);
     }
 
-    static synchronized void stop(Context ctx, Runnable done) {
+    /** Ends the running sleep; with pause it can be resumed with the same kind. */
+    static synchronized void stop(Context ctx, boolean pause, Runnable done) {
         SleepState s = load(ctx);
         if (!s.isRunning()) {
+            if (!pause && s.isPaused()) {
+                s.pausedKind = null;
+                s.save(ctx);
+                refreshUi(ctx);
+            }
             done.run();
             return;
         }
         long end = Math.max(System.currentTimeMillis(), s.runningStart);
         enqueue(ctx, record(s.runningId, s.runningStart, end, s.runningKind));
+        s.pausedKind = pause ? s.runningKind : null;
+        s.pausedAt = end;
         s.runningId = null;
         s.lastWake = end;
         s.save(ctx);
@@ -97,7 +124,7 @@ final class SleepState {
     }
 
     static void toggle(Context ctx, Runnable done) {
-        if (load(ctx).isRunning()) stop(ctx, done);
+        if (load(ctx).isRunning()) stop(ctx, false, done);
         else start(ctx, done);
     }
 

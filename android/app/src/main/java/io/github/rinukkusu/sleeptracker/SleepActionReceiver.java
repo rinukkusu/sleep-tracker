@@ -9,6 +9,8 @@ import android.content.Intent;
 public class SleepActionReceiver extends BroadcastReceiver {
     static final String ACTION_TOGGLE = "io.github.rinukkusu.sleeptracker.TOGGLE";
     static final String ACTION_STOP = "io.github.rinukkusu.sleeptracker.STOP";
+    static final String ACTION_PAUSE = "io.github.rinukkusu.sleeptracker.PAUSE";
+    static final String ACTION_RESUME = "io.github.rinukkusu.sleeptracker.RESUME";
 
     static PendingIntent pendingIntent(Context ctx, String action) {
         Intent i = new Intent(ctx, SleepActionReceiver.class).setAction(action);
@@ -20,8 +22,11 @@ public class SleepActionReceiver extends BroadcastReceiver {
         // Keep the receiver alive while the change is synced to PocketBase.
         PendingResult result = goAsync();
         Runnable done = result::finish;
-        if (ACTION_STOP.equals(intent.getAction())) SleepState.stop(ctx, done);
-        else if (ACTION_TOGGLE.equals(intent.getAction())) SleepState.toggle(ctx, done);
+        String action = intent.getAction();
+        if (ACTION_STOP.equals(action)) SleepState.stop(ctx, false, done);
+        else if (ACTION_PAUSE.equals(action)) SleepState.stop(ctx, true, done);
+        else if (ACTION_RESUME.equals(action)) SleepState.start(ctx, done);
+        else if (ACTION_TOGGLE.equals(action)) SleepState.toggle(ctx, done);
         else done.run();
     }
 }

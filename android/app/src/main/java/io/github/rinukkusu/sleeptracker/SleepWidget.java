@@ -58,22 +58,28 @@ public class SleepWidget extends AppWidgetProvider {
         boolean night = "night".equals(s.runningKind);
 
         if (style == Style.COMPACT) {
-            v.setTextViewText(R.id.widget_label, s.isRunning() ? (night ? "🌙" : "😴") : "☀️");
+            v.setTextViewText(R.id.widget_label, s.isRunning() ? (night ? "🌙" : "😴") : s.isPaused() ? "⏸" : "☀️");
             v.setInt(R.id.widget_root, "setBackgroundResource", s.isRunning() ? R.drawable.widget_compact_wake : R.drawable.widget_compact_sleep);
             // The whole 1x1 widget toggles.
             v.setOnClickPendingIntent(R.id.widget_root, SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_TOGGLE));
         } else {
+            boolean controls = s.isRunning() || s.isPaused();
             if (s.isRunning()) {
                 v.setTextViewText(R.id.widget_label, night ? "🌙 Schläft" : "☀️ Nickerchen");
-                v.setTextViewText(R.id.widget_button, "Aufgewacht");
-                v.setInt(R.id.widget_button, "setBackgroundResource", R.drawable.widget_button_wake);
+            } else if (s.isPaused()) {
+                v.setTextViewText(R.id.widget_label, "⏸ Pause");
             } else {
                 v.setTextViewText(R.id.widget_label, "Wach");
-                v.setTextViewText(R.id.widget_button, "Schläft");
-                v.setInt(R.id.widget_button, "setBackgroundResource", R.drawable.widget_button_sleep);
             }
+            // Awake: one "Schläft" button. Asleep or paused: pause/resume and stop icons.
+            v.setViewVisibility(R.id.widget_button, controls ? View.GONE : View.VISIBLE);
+            v.setViewVisibility(R.id.widget_controls, controls ? View.VISIBLE : View.GONE);
+            v.setImageViewResource(R.id.widget_pause, s.isPaused() ? R.drawable.ic_widget_play : R.drawable.ic_widget_pause);
+            v.setContentDescription(R.id.widget_pause, s.isPaused() ? "Weiter schlafen" : "Pause");
             v.setTextViewText(R.id.widget_since, since > 0 ? "seit " + SleepState.time(since) : "noch keine Einträge");
             v.setOnClickPendingIntent(R.id.widget_button, SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_TOGGLE));
+            v.setOnClickPendingIntent(R.id.widget_pause, SleepActionReceiver.pendingIntent(ctx, s.isPaused() ? SleepActionReceiver.ACTION_RESUME : SleepActionReceiver.ACTION_PAUSE));
+            v.setOnClickPendingIntent(R.id.widget_stop, SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_STOP));
             v.setOnClickPendingIntent(R.id.widget_root, SleepNotifier.openApp(ctx));
         }
 
