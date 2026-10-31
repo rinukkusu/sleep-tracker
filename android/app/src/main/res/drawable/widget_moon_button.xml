@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Round start button, same gradient as the big button in the app. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <gradient
+        android:centerX="0.3"
+        android:centerY="0.3"
+        android:endColor="#6F7DFF"
+        android:gradientRadius="75%"
+        android:startColor="#8D98FF"
+        android:type="radial" />
+</shape>

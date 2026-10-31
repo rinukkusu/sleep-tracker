@@ -48,19 +48,15 @@
             android:textSize="12sp" />
     </LinearLayout>
 
-    <Button
-        android:id="@+id/widget_button"
-        android:layout_width="wrap_content"
-        android:layout_height="48dp"
-        android:background="@drawable/widget_button_sleep"
-        android:minWidth="96dp"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:text="Schläft"
-        android:textAllCaps="false"
-        android:textColor="#FFFFFF"
-        android:textSize="15sp"
-        android:textStyle="bold" />
+    <ImageButton
+        android:id="@+id/widget_moon"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:background="@drawable/widget_moon_button"
+        android:contentDescription="Schläft"
+        android:padding="10dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_widget_moon_zz" />
 
     <LinearLayout
         android:id="@+id/widget_controls"

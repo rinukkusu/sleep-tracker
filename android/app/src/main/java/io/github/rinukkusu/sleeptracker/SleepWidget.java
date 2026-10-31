@@ -41,7 +41,7 @@ public class SleepWidget extends AppWidgetProvider {
             // Smallest size each layout applies from (in dp).
             Map<SizeF, RemoteViews> bySize = new HashMap<>();
             bySize.put(new SizeF(40f, 40f), build(ctx, s, Style.COMPACT));
-            bySize.put(new SizeF(100f, 110f), build(ctx, s, Style.VERTICAL));
+            bySize.put(new SizeF(100f, 160f), build(ctx, s, Style.VERTICAL));
             bySize.put(new SizeF(180f, 40f), build(ctx, s, Style.WIDE));
             views = new RemoteViews(bySize);
         } else {
@@ -98,16 +98,17 @@ public class SleepWidget extends AppWidgetProvider {
                 v.setTextViewText(R.id.widget_label, night ? "🌙 Schläft" : "☀️ Nickerchen");
                 since = "seit " + SleepState.time(s.runningStart);
             } else {
-                v.setTextViewText(R.id.widget_label, "Schlaf");
-                since = s.lastWake > 0 ? "her" : "noch keine Einträge";
+                v.setTextViewText(R.id.widget_label, s.lastWake > 0 ? "Schlaf vor" : "Wach");
+                since = s.lastWake > 0 ? null : "noch keine Einträge";
             }
             v.setTextViewText(R.id.widget_since, since);
-            // Awake: one "Schläft" button. Asleep: pause/resume and stop icons.
-            v.setViewVisibility(R.id.widget_button, s.isRunning() ? View.GONE : View.VISIBLE);
+            v.setViewVisibility(R.id.widget_since, since != null ? View.VISIBLE : View.GONE);
+            // Awake: round moon button to start. Asleep: pause/resume and stop icons.
+            v.setViewVisibility(R.id.widget_moon, s.isRunning() ? View.GONE : View.VISIBLE);
             v.setViewVisibility(R.id.widget_controls, s.isRunning() ? View.VISIBLE : View.GONE);
             v.setImageViewResource(R.id.widget_pause, paused ? R.drawable.ic_widget_play : R.drawable.ic_widget_pause);
             v.setContentDescription(R.id.widget_pause, paused ? "Schläft weiter" : "Kurz wach");
-            v.setOnClickPendingIntent(R.id.widget_button, SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_TOGGLE));
+            v.setOnClickPendingIntent(R.id.widget_moon, SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_START));
             v.setOnClickPendingIntent(R.id.widget_pause, SleepActionReceiver.pendingIntent(ctx, paused ? SleepActionReceiver.ACTION_RESUME : SleepActionReceiver.ACTION_PAUSE));
             v.setOnClickPendingIntent(R.id.widget_stop, SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_STOP));
             v.setOnClickPendingIntent(R.id.widget_root, SleepNotifier.openApp(ctx));

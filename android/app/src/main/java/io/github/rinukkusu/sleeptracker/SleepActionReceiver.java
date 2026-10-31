@@ -9,6 +9,7 @@ import android.content.Intent;
 public class SleepActionReceiver extends BroadcastReceiver {
     static final String ACTION_TOGGLE = "io.github.rinukkusu.sleeptracker.TOGGLE";
     static final String ACTION_STOP = "io.github.rinukkusu.sleeptracker.STOP";
+    static final String ACTION_START = "io.github.rinukkusu.sleeptracker.START";
     static final String ACTION_PAUSE = "io.github.rinukkusu.sleeptracker.PAUSE";
     static final String ACTION_RESUME = "io.github.rinukkusu.sleeptracker.RESUME";
     /** Per-minute widget redraw while awake. */
@@ -30,7 +31,8 @@ public class SleepActionReceiver extends BroadcastReceiver {
             done.run();
             return;
         }
-        if (ACTION_STOP.equals(action)) SleepState.stop(ctx, done);
+        if (ACTION_START.equals(action)) SleepState.start(ctx, done);
+        else if (ACTION_STOP.equals(action)) SleepState.stop(ctx, done);
         else if (ACTION_PAUSE.equals(action)) SleepState.pause(ctx, done);
         else if (ACTION_RESUME.equals(action)) SleepState.resume(ctx, done);
         else if (ACTION_TOGGLE.equals(action)) SleepState.toggle(ctx, done);
