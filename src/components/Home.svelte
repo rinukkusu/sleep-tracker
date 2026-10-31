@@ -23,6 +23,7 @@
 
   const running = $derived(store.running);
   const paused = $derived(running ? openPause(running) : null);
+  const lastSleep = $derived(store.sorted.find((s) => s.end) ?? null);
   const today = $derived(startOfDay(clock.now));
   const stats = $derived(dayStats(store.sorted, today, clock.now));
   // Only recomputed when the entries change, not every clock tick.
@@ -83,6 +84,11 @@
       {store.lastWake ? fmtDuration(clock.now - Date.parse(store.lastWake)) : '–'}
     </div>
     <div class="since muted">{store.lastWake ? `wach seit ${fmtTime(store.lastWake)}` : 'noch keine Einträge'}</div>
+    {#if lastSleep}
+      <div class="last muted">
+        davor {fmtDuration(sleptMs(lastSleep, clock.now))} {lastSleep.kind === 'night' ? 'Nachtschlaf' : 'Nickerchen'}
+      </div>
+    {/if}
     {#if next}
       <div class="next">
         {next.bedtime ? '🌙 Schlafenszeit' : '☀️ Nickerchen'} ca. <strong class="tabular">{fmtTime(next.at)}</strong>
@@ -140,6 +146,11 @@
 
   .since {
     font-size: 0.95rem;
+  }
+
+  .last {
+    margin-top: -0.35rem;
+    font-size: 0.8rem;
   }
 
   .next {
