@@ -1,11 +1,13 @@
 package io.github.rinukkusu.sleeptracker;
 
+import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.os.Bundle;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
@@ -40,6 +42,12 @@ final class SleepNotifier {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(openApp(ctx))
             .addAction(0, "Aufgewacht", SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_STOP));
+        if (Build.VERSION.SDK_INT >= 36) {
+            // Android 16 "Live Update": shows the running time as a chip in the status bar.
+            Bundle extras = new Bundle();
+            extras.putBoolean(Notification.EXTRA_REQUEST_PROMOTED_ONGOING, true);
+            b.addExtras(extras);
+        }
         try {
             nm.notify(ID, b.build());
         } catch (SecurityException ignored) {
