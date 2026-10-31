@@ -1,6 +1,5 @@
 package io.github.rinukkusu.sleeptracker;
 
-import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -45,7 +44,8 @@ final class SleepNotifier {
         if (Build.VERSION.SDK_INT >= 36) {
             // Android 16 "Live Update": shows the running time as a chip in the status bar.
             Bundle extras = new Bundle();
-            extras.putBoolean(Notification.EXTRA_REQUEST_PROMOTED_ONGOING, true);
+            // Notification.EXTRA_REQUEST_PROMOTED_ONGOING, not in the compile SDK yet.
+            extras.putBoolean("android.requestPromotedOngoing", true);
             b.addExtras(extras);
         }
         try {
