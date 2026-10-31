@@ -6,6 +6,23 @@
   let server = $state(defaultServerUrl());
   let error = $state('');
   let busy = $state(false);
+  let email = $state('');
+  let password = $state('');
+
+  async function loginPassword(e: SubmitEvent) {
+    e.preventDefault();
+    busy = true;
+    error = '';
+    try {
+      setServerUrl(server);
+      await pb.collection('users').authWithPassword(email.trim(), password);
+    } catch (err) {
+      const { status } = err as { status?: number };
+      error = status === 0 ? 'Server nicht erreichbar' : 'E-Mail oder Passwort falsch';
+    } finally {
+      busy = false;
+    }
+  }
 
   async function login() {
     busy = true;
@@ -41,10 +58,13 @@
 
 <div class="card login">
   <h1>🌙 Schlaf-Tracker</h1>
-  <button class="primary" onclick={login} disabled={busy}>
-    {busy ? '…' : 'Mit Google anmelden'}
-  </button>
+  <form onsubmit={loginPassword}>
+    <input bind:value={email} type="email" autocomplete="username" placeholder="E-Mail" required />
+    <input bind:value={password} type="password" autocomplete="current-password" placeholder="Passwort" required />
+    <button class="primary" disabled={busy}>{busy ? '…' : 'Anmelden'}</button>
+  </form>
   {#if error}<p class="error">{error}</p>{/if}
+  <button class="ghost" onclick={login} disabled={busy}>Mit Google anmelden</button>
   <details>
     <summary class="muted">Server</summary>
     <input bind:value={server} type="url" placeholder="https://pb.example.com" />
@@ -63,6 +83,11 @@
     margin: 0 0 0.5rem;
     font-size: 1.4rem;
     text-align: center;
+  }
+
+  form {
+    display: grid;
+    gap: 0.6rem;
   }
 
   .error {

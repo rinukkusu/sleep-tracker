@@ -1,5 +1,7 @@
 package io.github.rinukkusu.sleeptracker;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
@@ -46,6 +48,29 @@ public class SleepWidget extends AppWidgetProvider {
             views = build(ctx, s, Style.WIDE);
         }
         manager.updateAppWidget(ids, views);
+        scheduleTick(ctx, s);
+    }
+
+    /**
+     * Awake shows whole minutes ("15 Min."), so the widget is redrawn once a
+     * minute. Not a wakeup alarm: with the screen off nobody looks anyway.
+     */
+    private static void scheduleTick(Context ctx, SleepState s) {
+        AlarmManager alarms = ctx.getSystemService(AlarmManager.class);
+        PendingIntent tick = SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_TICK);
+        if (s.isRunning() || s.lastWake <= 0) {
+            alarms.cancel(tick);
+            return;
+        }
+        long now = System.currentTimeMillis();
+        long next = now + 60_000 - ((now - s.lastWake) % 60_000);
+        alarms.setWindow(AlarmManager.RTC, next, 5_000, tick);
+    }
+
+    /** "15 Min." or "1:05 Std." */
+    static String ago(long ms) {
+        long m = Math.max(0, ms / 60_000);
+        return m < 60 ? m + " Min." : String.format(java.util.Locale.GERMANY, "%d:%02d Std.", m / 60, m % 60);
     }
 
     private static RemoteViews build(Context ctx, SleepState s, Style style) {
@@ -73,8 +98,8 @@ public class SleepWidget extends AppWidgetProvider {
                 v.setTextViewText(R.id.widget_label, night ? "🌙 Schläft" : "☀️ Nickerchen");
                 since = "seit " + SleepState.time(s.runningStart);
             } else {
-                v.setTextViewText(R.id.widget_label, "Wach");
-                since = s.lastWake > 0 ? "seit " + SleepState.time(s.lastWake) : "noch keine Einträge";
+                v.setTextViewText(R.id.widget_label, "Schlaf");
+                since = s.lastWake > 0 ? "her" : "noch keine Einträge";
             }
             v.setTextViewText(R.id.widget_since, since);
             // Awake: one "Schläft" button. Asleep: pause/resume and stop icons.
@@ -88,11 +113,17 @@ public class SleepWidget extends AppWidgetProvider {
             v.setOnClickPendingIntent(R.id.widget_root, SleepNotifier.openApp(ctx));
         }
 
-        // Asleep: time slept without pauses, frozen during a pause. Awake: time since waking up.
-        long elapsed = s.isRunning() ? s.sleptMs(now) : s.lastWake > 0 ? now - s.lastWake : -1;
-        if (elapsed >= 0) {
-            v.setChronometer(R.id.widget_chrono, SystemClock.elapsedRealtime() - elapsed, null, !paused);
+        // Asleep: ticking time slept without pauses, frozen during a pause.
+        // Awake: minutes since the last sleep ended.
+        v.setViewVisibility(R.id.widget_ago, View.GONE);
+        if (s.isRunning()) {
+            v.setChronometer(R.id.widget_chrono, SystemClock.elapsedRealtime() - s.sleptMs(now), null, !paused);
             v.setViewVisibility(R.id.widget_chrono, View.VISIBLE);
+        } else if (s.lastWake > 0) {
+            v.setChronometer(R.id.widget_chrono, SystemClock.elapsedRealtime(), null, false);
+            v.setViewVisibility(R.id.widget_chrono, View.GONE);
+            v.setTextViewText(R.id.widget_ago, ago(now - s.lastWake));
+            v.setViewVisibility(R.id.widget_ago, View.VISIBLE);
         } else {
             v.setChronometer(R.id.widget_chrono, SystemClock.elapsedRealtime(), null, false);
             v.setViewVisibility(R.id.widget_chrono, style == Style.COMPACT ? View.INVISIBLE : View.GONE);

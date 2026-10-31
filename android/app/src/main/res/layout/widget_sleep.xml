@@ -30,6 +30,16 @@
             android:textColor="#E8EAF6"
             android:textSize="28sp" />
 
+        <!-- Awake: "15 Min." instead of a ticking clock -->
+        <TextView
+            android:id="@+id/widget_ago"
+            android:visibility="gone"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-light"
+            android:textColor="#E8EAF6"
+            android:textSize="28sp" />
+
         <TextView
             android:id="@+id/widget_since"
             android:layout_width="wrap_content"

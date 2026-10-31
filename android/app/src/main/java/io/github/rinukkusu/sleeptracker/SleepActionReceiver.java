@@ -11,6 +11,8 @@ public class SleepActionReceiver extends BroadcastReceiver {
     static final String ACTION_STOP = "io.github.rinukkusu.sleeptracker.STOP";
     static final String ACTION_PAUSE = "io.github.rinukkusu.sleeptracker.PAUSE";
     static final String ACTION_RESUME = "io.github.rinukkusu.sleeptracker.RESUME";
+    /** Per-minute widget redraw while awake. */
+    static final String ACTION_TICK = "io.github.rinukkusu.sleeptracker.TICK";
 
     static PendingIntent pendingIntent(Context ctx, String action) {
         Intent i = new Intent(ctx, SleepActionReceiver.class).setAction(action);
@@ -23,6 +25,11 @@ public class SleepActionReceiver extends BroadcastReceiver {
         PendingResult result = goAsync();
         Runnable done = result::finish;
         String action = intent.getAction();
+        if (ACTION_TICK.equals(action)) {
+            SleepWidget.updateAll(ctx);
+            done.run();
+            return;
+        }
         if (ACTION_STOP.equals(action)) SleepState.stop(ctx, done);
         else if (ACTION_PAUSE.equals(action)) SleepState.pause(ctx, done);
         else if (ACTION_RESUME.equals(action)) SleepState.resume(ctx, done);
