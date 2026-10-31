@@ -7,6 +7,7 @@ import type { Kind, Pause, Sleep } from './types';
 const COLLECTION = 'sleeps';
 const CACHE_KEY = 'sleeps_cache';
 const QUEUE_KEY = 'sleeps_queue';
+const HISTORY_KEY = 'sleeps_history';
 
 type Op = { t: 'put'; s: Sleep } | { t: 'del'; id: string };
 
@@ -112,6 +113,7 @@ class SleepStore {
     this.pendingCount = 0;
     localStorage.removeItem(CACHE_KEY);
     localStorage.removeItem(QUEUE_KEY);
+    localStorage.removeItem(HISTORY_KEY);
   }
 
   start(kind: Kind, at = new Date()) {
@@ -181,14 +183,20 @@ class SleepStore {
     }
   }
 
-  /** The whole history (for statistics), merged with local changes. Not kept in the store. */
+  /**
+   * The whole history (for statistics), merged with local changes. Not kept in
+   * the store, but cached separately so the statistics also work offline.
+   */
   async fetchAll(): Promise<Sleep[]> {
-    const all: Record<string, Sleep> = {};
+    let all: Record<string, Sleep>;
     try {
       const records = await pb.collection(COLLECTION).getFullList({ sort: 'start_at', batch: 1000 });
+      all = {};
       for (const r of records) all[r.id] = fromRecord(r);
+      persist(HISTORY_KEY, all);
     } catch (e) {
       if (!isNetworkError(e)) console.warn('fetching history failed', e);
+      all = load(HISTORY_KEY, {});
     }
     for (const s of Object.values($state.snapshot(this.sessions))) all[s.id] = s;
     for (const op of this.queue) if (op.t === 'del') delete all[op.id];

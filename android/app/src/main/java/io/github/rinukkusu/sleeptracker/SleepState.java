@@ -203,18 +203,20 @@ final class SleepState {
         SleepPlugin.notifyPendingActions();
         executor.execute(() -> {
             try {
-                syncPending(ctx);
+                // Offline: retry as soon as there is a network, even with the app closed.
+                if (!syncPending(ctx)) SyncJob.schedule(ctx);
             } finally {
                 done.run();
             }
         });
     }
 
-    private static void syncPending(Context ctx) {
+    /** Uploads queued changes. Returns false if some are still left (offline, server down). */
+    static boolean syncPending(Context ctx) {
         SharedPreferences p = prefs(ctx);
         String baseUrl = p.getString("base_url", null);
         String token = p.getString("token", null);
-        if (baseUrl == null || token == null) return;
+        if (baseUrl == null || token == null) return true; // the app syncs once logged in
 
         JSONArray pending;
         synchronized (SleepState.class) {
@@ -227,10 +229,11 @@ final class SleepState {
                 upsert(baseUrl, token, rec);
                 removePending(ctx, rec.getString("id"));
             } catch (Exception e) {
-                Log.w(TAG, "sync failed, the app will retry", e);
-                return;
+                Log.w(TAG, "sync failed, will retry", e);
+                return false;
             }
         }
+        return true;
     }
 
     private static void upsert(String baseUrl, String token, JSONObject rec) throws Exception {
