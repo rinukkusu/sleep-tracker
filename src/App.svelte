@@ -5,6 +5,7 @@
   import Login from './components/Login.svelte';
   import Home from './components/Home.svelte';
   import History from './components/History.svelte';
+  import Icon from './components/Icon.svelte';
 
   let authed = $state(pb.authStore.isValid);
   let tab = $state<'now' | 'history'>('now');
@@ -64,10 +65,10 @@
       <span class="title">Schlaf-Tracker</span>
       {#if !store.online || store.pendingCount}
         <span class="sync" title="Wird synchronisiert, sobald wieder online">
-          {store.online ? '⟳' : 'offline'}{store.pendingCount ? ` · ${store.pendingCount}` : ''}
+          {#if store.online}<Icon name="sync" size={14} />{:else}offline{/if}{store.pendingCount ? ` · ${store.pendingCount}` : ''}
         </span>
       {/if}
-      <button class="ghost" onclick={logout} aria-label="Abmelden">⏻</button>
+      <button class="ghost" onclick={logout} aria-label="Abmelden"><Icon name="logout" /></button>
     </header>
 
     {#if tab === 'now'}

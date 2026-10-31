@@ -7,6 +7,7 @@
   import type { Kind, Sleep } from '../lib/types';
   import DayBar from './DayBar.svelte';
   import EditDialog from './EditDialog.svelte';
+  import Icon from './Icon.svelte';
 
   let kind = $state<Kind>(defaultKind());
   let editing = $state<Sleep | null>(null);
@@ -39,7 +40,7 @@
     </button>
     <div class="timer tabular">{fmtTimer(clock.now - Date.parse(running.start))}</div>
     <button class="ghost since" onclick={() => (editing = running)}>
-      schläft seit {fmtTime(running.start)} ✎
+      schläft seit {fmtTime(running.start)} <Icon name="edit" size={14} />
     </button>
   {:else}
     <div class="kinds">
