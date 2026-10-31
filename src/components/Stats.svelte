@@ -14,7 +14,7 @@
     sleepDays,
     type Tip,
   } from '../lib/charts';
-  import { isNative, Sleep } from '../lib/native';
+  import { isNative, Sleep as SleepPlugin } from '../lib/native';
   import { median, predictNext, toSpans } from '../lib/predict';
   import { untrack } from 'svelte';
   import { store } from '../lib/store.svelte';
@@ -31,7 +31,7 @@
   let width = $state(0);
   let version = $state('');
   const webVersion = (import.meta.env.VITE_WEB_VERSION ?? 'dev').slice(0, 7);
-  if (isNative) void Sleep.info().then((i) => (version = i.version));
+  if (isNative) void SleepPlugin.info().then((i) => (version = i.version));
 
   let pattern: HTMLCanvasElement;
   let weekly: SVGSVGElement;
