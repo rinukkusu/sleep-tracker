@@ -158,6 +158,7 @@
   .kinds {
     display: flex;
     gap: 0.5rem;
+    margin-bottom: 0.75rem;
   }
 
   .kinds button.active.night,
@@ -173,6 +174,7 @@
   }
 
   .kind-chip {
+    margin-bottom: 0.75rem;
     border-radius: 999px;
     padding: 0.4rem 0.9rem;
     font-size: 0.9rem;

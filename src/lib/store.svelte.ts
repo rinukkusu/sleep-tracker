@@ -183,6 +183,11 @@ class SleepStore {
     }
   }
 
+  /** The whole history as last fetched (instant, for the first render of the statistics). */
+  cachedAll(): Sleep[] {
+    return this.withLocal(load(HISTORY_KEY, {}));
+  }
+
   /**
    * The whole history (for statistics), merged with local changes. Not kept in
    * the store, but cached separately so the statistics also work offline.
@@ -198,6 +203,10 @@ class SleepStore {
       if (!isNetworkError(e)) console.warn('fetching history failed', e);
       all = load(HISTORY_KEY, {});
     }
+    return this.withLocal(all);
+  }
+
+  private withLocal(all: Record<string, Sleep>): Sleep[] {
     for (const s of Object.values($state.snapshot(this.sessions))) all[s.id] = s;
     for (const op of this.queue) if (op.t === 'del') delete all[op.id];
     return Object.values(all);

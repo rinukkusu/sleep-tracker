@@ -25,19 +25,24 @@
   const ranges = { '3m': ['3 Monate', 91], '1y': ['1 Jahr', 365], all: ['Alles', Infinity] } as const;
   type Range = keyof typeof ranges;
 
-  let history = $state<Sleep[]>(store.sorted);
-  let loading = $state(true);
+  // Start from the cached full history; without one (first visit) show nothing
+  // until it's loaded instead of statistics for just the last two weeks.
+  const cached = store.cachedAll();
+  const hasCache = cached.length > store.sorted.length;
+  let history = $state<Sleep[]>(hasCache ? cached : []);
+  let loading = $state(!hasCache);
   let range = $state<Range>('1y');
   let width = $state(0);
   let version = $state('');
   const webVersion = (import.meta.env.VITE_WEB_VERSION ?? 'dev').slice(0, 7);
   if (isNative) void SleepPlugin.info().then((i) => (version = i.version));
 
-  let pattern: HTMLCanvasElement;
-  let weekly: SVGSVGElement;
-  let naps: SVGSVGElement;
-  let clockChart: SVGSVGElement;
-  let windows: SVGSVGElement;
+  // State, so the charts draw once they're mounted (after the first load).
+  let pattern = $state<HTMLCanvasElement>();
+  let weekly = $state<SVGSVGElement>();
+  let naps = $state<SVGSVGElement>();
+  let clockChart = $state<SVGSVGElement>();
+  let windows = $state<SVGSVGElement>();
   let tipEl: HTMLDivElement;
 
   $effect(() => {
@@ -124,7 +129,7 @@
   $effect(() => {
     void width; // redraw on resize
     const { spans: s, days: d } = inRange;
-    if (!s.length) return;
+    if (!s.length || !pattern || !weekly || !naps || !clockChart || !windows) return;
     drawPattern(pattern, s, tip);
     drawWeekly(weekly, d, tip);
     drawNaps(naps, d, tip);
@@ -136,6 +141,9 @@
 <svelte:window onscroll={() => tip?.hide()} />
 
 <div class="stats" bind:clientWidth={width}>
+  {#if !history.length}
+    <p class="muted small center">{loading ? 'Lade Verlauf…' : 'Noch keine Einträge'}</p>
+  {:else}
   {#if next}
     <section class="card next">
       <span class="moon">🌙</span>
@@ -163,7 +171,6 @@
     {/each}
   </div>
 
-  {#if loading}<p class="muted small center">Lade Verlauf…</p>{/if}
 
   <section class="card">
     <h2>Schlafmuster</h2>
@@ -222,6 +229,7 @@
         {/each}
       </ul>
     </section>
+  {/if}
   {/if}
 </div>
 
