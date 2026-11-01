@@ -9,6 +9,7 @@
   import type { Kind, Sleep } from '../lib/types';
   import DayBar from './DayBar.svelte';
   import EditDialog from './EditDialog.svelte';
+  import EntryList from './EntryList.svelte';
   import Icon from './Icon.svelte';
 
   let kind = $state<Kind>(defaultKind());
@@ -116,6 +117,7 @@
     </span>
   </div>
   <DayBar day={today} segments={stats.segments} now={clock.now} onselect={(s) => (editing = s)} />
+  <EntryList sleeps={stats.segments.map((s) => s.sleep)} onselect={(s) => (editing = s)} />
 </section>
 
 {#if editing}

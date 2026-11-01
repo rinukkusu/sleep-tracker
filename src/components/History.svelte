@@ -1,11 +1,12 @@
 <script lang="ts">
   import { clock } from '../lib/clock.svelte';
-  import { dayStats, pausedMs, sleptMs } from '../lib/stats';
+  import { dayStats } from '../lib/stats';
   import { store } from '../lib/store.svelte';
-  import { addDays, fmtDay, fmtDuration, fmtTime, kindIcon, startOfDay } from '../lib/time';
+  import { addDays, fmtDay, fmtDuration, startOfDay } from '../lib/time';
   import type { Sleep } from '../lib/types';
   import DayBar from './DayBar.svelte';
   import EditDialog from './EditDialog.svelte';
+  import EntryList from './EntryList.svelte';
 
   let editing = $state<Sleep | null>(null);
   let creating = $state(false);
@@ -54,22 +55,7 @@
     <DayBar {day} segments={stats.segments} now={clock.now} onselect={(s) => (editing = s)} />
 
     {#if expanded === +day}
-      <ul>
-        {#each stats.segments as { sleep } (sleep.id)}
-          <li>
-            <button onclick={() => (editing = sleep)}>
-              <span>{kindIcon[sleep.kind]}</span>
-              <span class="tabular">{fmtTime(sleep.start)} – {sleep.end ? fmtTime(sleep.end) : 'jetzt'}</span>
-              <span class="muted tabular">
-                {fmtDuration(sleptMs(sleep, clock.now))}{#if sleep.pauses?.length} · {fmtDuration(pausedMs(sleep, clock.now))} wach{/if}
-              </span>
-              {#if sleep.note}<span class="note muted">{sleep.note}</span>{/if}
-            </button>
-          </li>
-        {:else}
-          <li class="muted">Keine Einträge</li>
-        {/each}
-      </ul>
+      <EntryList sleeps={stats.segments.map((s) => s.sleep)} onselect={(s) => (editing = s)} />
     {/if}
   </section>
 {/each}
@@ -153,30 +139,6 @@
   .detail {
     grid-column: 1 / -1;
     font-size: 0.8rem;
-  }
-
-  ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 0.25rem;
-  }
-
-  li button {
-    width: 100%;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    align-items: baseline;
-    text-align: left;
-    padding: 0.5rem 0.6rem;
-    background: var(--surface-2);
-  }
-
-  .note {
-    flex-basis: 100%;
-    font-size: 0.85rem;
   }
 
   .more {
