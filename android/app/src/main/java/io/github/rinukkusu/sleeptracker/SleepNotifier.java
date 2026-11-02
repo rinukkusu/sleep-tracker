@@ -34,7 +34,7 @@ final class SleepNotifier {
         boolean paused = pausedSince > 0;
         String kind = night ? "Nachtschlaf" : "Nickerchen";
         NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, CHANNEL)
-            .setSmallIcon(R.drawable.ic_stat_moon)
+            .setSmallIcon(paused ? R.drawable.ic_stat_eye : R.drawable.ic_stat_moon)
             .setColor(0xFF6F7DFF)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
