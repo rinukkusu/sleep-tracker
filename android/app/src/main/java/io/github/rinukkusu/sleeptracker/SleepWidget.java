@@ -9,6 +9,7 @@ import android.content.Context;
 import android.os.Build;
 import android.os.SystemClock;
 import android.util.SizeF;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.RemoteViews;
 import java.util.HashMap;
@@ -21,6 +22,9 @@ import java.util.Map;
 public class SleepWidget extends AppWidgetProvider {
 
     private enum Style { WIDE, VERTICAL, COMPACT }
+
+    /** From 10 hours on ("10:00:00") the timer gets one size smaller so it still fits. */
+    private static final long LONG_MS = 10 * 3_600_000L;
 
     @Override
     public void onUpdate(Context ctx, AppWidgetManager manager, int[] ids) {
@@ -53,17 +57,28 @@ public class SleepWidget extends AppWidgetProvider {
 
     /**
      * Awake shows whole minutes ("15 Min."), so the widget is redrawn once a
-     * minute. Not a wakeup alarm: with the screen off nobody looks anyway.
+     * minute. Asleep, the chronometer ticks itself and only the switch to the
+     * smaller font at 10 hours needs a redraw. Not a wakeup alarm: with the
+     * screen off nobody looks anyway.
      */
     private static void scheduleTick(Context ctx, SleepState s) {
         AlarmManager alarms = ctx.getSystemService(AlarmManager.class);
         PendingIntent tick = SleepActionReceiver.pendingIntent(ctx, SleepActionReceiver.ACTION_TICK);
-        if (s.isRunning() || s.lastWake <= 0) {
+        long now = System.currentTimeMillis();
+        long next;
+        if (s.isRunning()) {
+            long slept = s.sleptMs(now);
+            if (s.isPaused() || slept >= LONG_MS) {
+                alarms.cancel(tick);
+                return;
+            }
+            next = now + LONG_MS - slept;
+        } else if (s.lastWake > 0) {
+            next = now + 60_000 - ((now - s.lastWake) % 60_000);
+        } else {
             alarms.cancel(tick);
             return;
         }
-        long now = System.currentTimeMillis();
-        long next = now + 60_000 - ((now - s.lastWake) % 60_000);
         alarms.setWindow(AlarmManager.RTC, next, 5_000, tick);
     }
 
@@ -118,7 +133,11 @@ public class SleepWidget extends AppWidgetProvider {
         // Awake: minutes since the last sleep ended.
         v.setViewVisibility(R.id.widget_ago, View.GONE);
         if (s.isRunning()) {
-            v.setChronometer(R.id.widget_chrono, SystemClock.elapsedRealtime() - s.sleptMs(now), null, !paused);
+            long slept = s.sleptMs(now);
+            float size = style == Style.COMPACT ? 12 : style == Style.VERTICAL ? 30 : 28;
+            if (slept >= LONG_MS) size -= style == Style.COMPACT ? 2 : 4;
+            v.setTextViewTextSize(R.id.widget_chrono, TypedValue.COMPLEX_UNIT_SP, size);
+            v.setChronometer(R.id.widget_chrono, SystemClock.elapsedRealtime() - slept, null, !paused);
             v.setViewVisibility(R.id.widget_chrono, View.VISIBLE);
         } else if (s.lastWake > 0) {
             v.setChronometer(R.id.widget_chrono, SystemClock.elapsedRealtime(), null, false);
