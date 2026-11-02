@@ -64,8 +64,7 @@
     <button class="kind-chip {running.kind}" onclick={switchRunningKind}>
       {kindIcon[running.kind]} {kindLabel[running.kind]}
     </button>
-    {@const slept = sleptMs(running, clock.now)}
-    <div class="timer tabular" class:muted={paused} class:long={slept >= 10 * 3_600_000}>{fmtTimer(slept)}</div>
+    <div class="timer tabular" class:muted={paused}>{fmtTimer(sleptMs(running, clock.now))}</div>
     <button class="ghost since" onclick={() => (editing = running)}>
       {#if paused}
         Pause · wach seit {fmtTime(paused.start)}
@@ -146,11 +145,6 @@
     font-size: clamp(3rem, 16vw, 5rem);
     font-weight: 200;
     line-height: 1;
-  }
-
-  /* "10:00:00" and up: one step smaller so it stays on one line. */
-  .timer.long {
-    font-size: clamp(2.5rem, 13vw, 4rem);
   }
 
   .since {
