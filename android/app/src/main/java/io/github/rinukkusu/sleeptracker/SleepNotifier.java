@@ -45,7 +45,7 @@ final class SleepNotifier {
         if (paused) {
             // Counts the time awake during the pause.
             b.setContentTitle("⏸ Kurz wach")
-                .setContentText(kind + " · " + (s.sleptMs(now) / 60_000) + " min geschlafen")
+                .setContentText(kind + " · " + duration(s.sleptMs(now)) + " geschlafen")
                 .setWhen(pausedSince)
                 .setShowWhen(true)
                 .setUsesChronometer(true)
@@ -94,5 +94,11 @@ final class SleepNotifier {
         ch.setShowBadge(false);
         ch.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
         nm.createNotificationChannel(ch);
+    }
+
+    /** "45m" or "10h 30m", like the app. */
+    static String duration(long ms) {
+        long m = Math.max(0, ms / 60_000);
+        return m < 60 ? m + "m" : String.format(java.util.Locale.GERMANY, "%dh %02dm", m / 60, m % 60);
     }
 }
