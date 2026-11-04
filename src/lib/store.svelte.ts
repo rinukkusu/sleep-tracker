@@ -43,6 +43,7 @@ function fromRecord(r: RecordModel): Sleep {
     kind: r.kind === 'night' ? 'night' : 'nap',
     note: r.note ?? '',
     pauses: Array.isArray(r.pauses) ? (r.pauses as Pause[]) : [],
+    by: r.by || undefined,
   };
 }
 
@@ -246,13 +247,17 @@ class SleepStore {
   }
 
   private async upsert(s: Sleep) {
+    let r: RecordModel;
     try {
-      await pb.collection(COLLECTION).update(s.id, toRecord(s));
+      r = await pb.collection(COLLECTION).update(s.id, toRecord(s));
     } catch (e) {
       if (e instanceof ClientResponseError && e.status === 404) {
-        await pb.collection(COLLECTION).create({ id: s.id, ...toRecord(s) });
+        r = await pb.collection(COLLECTION).create({ id: s.id, ...toRecord(s) });
       } else throw e;
     }
+    // The server sets who changed it.
+    const local = this.sessions[s.id];
+    if (local && r.by) local.by = r.by;
   }
 
   private hasPending(id: string) {

@@ -159,6 +159,10 @@ public class SleepPlugin extends Plugin {
         }
         Long lastWake = call.getLong("lastWake");
         s.lastWake = lastWake != null ? lastWake : 0;
+        JSONArray windows = call.getArray("windows", null);
+        s.windows = windows != null ? windows : new JSONArray();
+        s.wakePos = call.getInt("wakePos", 0);
+        s.remind = call.getBoolean("remind", true);
         s.save(getContext());
         SleepState.refreshUi(getContext());
         call.resolve();

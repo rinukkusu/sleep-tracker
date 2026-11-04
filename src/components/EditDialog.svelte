@@ -62,6 +62,7 @@
         <button type="button" class="danger" onclick={remove}>Löschen</button>
       {/if}
     </div>
+    {#if initial.by}<p class="by muted">zuletzt geändert von {initial.by}</p>{/if}
 
     <div class="kinds">
       {#each ['night', 'nap'] as const as k}
@@ -179,6 +180,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+  }
+
+  .by {
+    margin: -0.4rem 0 0;
+    font-size: 0.8rem;
   }
 
   .title button {

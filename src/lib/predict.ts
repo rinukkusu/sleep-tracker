@@ -64,32 +64,54 @@ export interface Prediction {
   typical: number[];
 }
 
+/** Typical length of one wake window of the day, and whether it usually ends in the night. */
+export interface TypicalWindow {
+  ms: number;
+  bedtime: boolean;
+}
+
 /**
- * Next sleep from the typical length of the same wake window of the day
- * (the 2nd one is usually longer than the 1st) over the last 14 days,
- * or 30 days if there are too few.
+ * Typical 1st, 2nd, ... wake window of the day (the 2nd one is usually longer
+ * than the 1st) over the last 14 days, or 30 days if there are too few.
+ * Index = naps since the night ended; null where there's too little data.
  */
+export function typicalWindows(spans: Span[], max = 6): (TypicalWindow | null)[] {
+  const last = spans[spans.length - 1];
+  if (!last) return [];
+  const windows = wakeWindows(spans);
+  const out: (TypicalWindow | null)[] = [];
+  for (let pos = 0; pos < max; pos++) {
+    let same = windows.filter((w) => w.pos === pos && w.t > last.e - 14 * DAY);
+    if (same.length < 5) same = windows.filter((w) => w.pos === pos && w.t > last.e - 30 * DAY);
+    out.push(
+      same.length < 3
+        ? null
+        : { ms: median(same.map((w) => w.ms)), bedtime: same.filter((w) => w.toNight).length > same.length / 2 },
+    );
+  }
+  return out;
+}
+
+/** Naps since the last night ended, i.e. which wake window of the day is running. */
+export function wakePos(spans: Span[]): number {
+  let pos = 0;
+  for (let i = spans.length - 1; i >= 0 && !spans[i].night; i--) pos++;
+  return pos;
+}
+
+/** Next sleep from the typical length of the same wake window of the day. */
 export function predictNext(spans: Span[]): Prediction | null {
   const last = spans[spans.length - 1];
   if (!last) return null;
-  let pos = 0;
-  for (let i = spans.length - 1; i >= 0 && !spans[i].night; i--) pos++;
+  const pos = wakePos(spans);
+  const w = typicalWindows(spans, pos + 1)[pos];
+  if (!w) return null;
   const windows = wakeWindows(spans);
-  let same = windows.filter((w) => w.pos === pos && w.t > last.e - 14 * DAY);
-  if (same.length < 5) same = windows.filter((w) => w.pos === pos && w.t > last.e - 30 * DAY);
-  if (same.length < 3) return null;
-  const windowMs = median(same.map((w) => w.ms));
   const typical: number[] = [];
   for (let p = 0; p < 4; p++) {
-    const l = windows.filter((w) => w.pos === p && w.t > last.e - 14 * DAY);
+    const l = windows.filter((x) => x.pos === p && x.t > last.e - 14 * DAY);
     if (l.length < 5) break;
-    typical.push(median(l.map((w) => w.ms)));
+    typical.push(median(l.map((x) => x.ms)));
   }
-  return {
-    at: last.e + windowMs,
-    bedtime: same.filter((w) => w.toNight).length > same.length / 2,
-    pos,
-    windowMs,
-    typical,
-  };
+  return { at: last.e + w.ms, bedtime: w.bedtime, pos, windowMs: w.ms, typical };
 }

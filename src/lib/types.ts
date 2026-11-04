@@ -17,4 +17,6 @@ export interface Sleep {
   kind: Kind;
   note: string;
   pauses: Pause[];
+  /** Who last created or changed it (set by the server, src: pocketbase/pb_hooks/sleep_by.pb.js) */
+  by?: string;
 }

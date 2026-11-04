@@ -114,7 +114,10 @@ public class SleepWidget extends AppWidgetProvider {
                 since = "seit " + SleepState.time(s.runningStart);
             } else {
                 v.setTextViewText(R.id.widget_label, s.lastWake > 0 ? "Wach seit" : "Wach");
-                since = s.lastWake > 0 ? null : "noch keine Einträge";
+                long next = s.nextAt();
+                since = s.lastWake <= 0
+                    ? "noch keine Einträge"
+                    : next > 0 ? (s.nextIsBedtime() ? "🌙 Bettzeit ~" : "☀️ Nickerchen ~") + SleepState.time(next) : null;
             }
             v.setTextViewText(R.id.widget_since, since);
             v.setViewVisibility(R.id.widget_since, since != null ? View.VISIBLE : View.GONE);

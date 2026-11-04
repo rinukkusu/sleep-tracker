@@ -40,6 +40,12 @@ final class SleepState {
     long lastWake;
     /** Short wake-ups of the running sleep: [{start, end}] as ISO strings, end null while awake. */
     JSONArray runningPauses = new JSONArray();
+    /** Typical wake windows of the day by position [{ms, bedtime} | null], computed by the web app. */
+    JSONArray windows = new JSONArray();
+    /** Naps since the night ended = which of those windows is running. */
+    int wakePos;
+    /** Notification shortly before the next predicted sleep. */
+    boolean remind = true;
 
     boolean isRunning() {
         return runningId != null;
@@ -71,6 +77,23 @@ final class SleepState {
         return Math.max(0, ms);
     }
 
+    /** Predicted start of the next sleep, 0 if unknown or asleep. */
+    long nextAt() {
+        if (isRunning() || lastWake <= 0) return 0;
+        JSONObject w = windows.optJSONObject(wakePos);
+        return w != null ? lastWake + w.optLong("ms") : 0;
+    }
+
+    boolean nextIsBedtime() {
+        JSONObject w = windows.optJSONObject(wakePos);
+        return w != null && w.optBoolean("bedtime");
+    }
+
+    /** After a sleep ended: the night starts the day over, a nap moves on to the next window. */
+    void advanceWakePos(String endedKind) {
+        wakePos = "night".equals(endedKind) ? 0 : wakePos + 1;
+    }
+
     static SleepState load(Context ctx) {
         SharedPreferences p = prefs(ctx);
         SleepState s = new SleepState();
@@ -78,8 +101,11 @@ final class SleepState {
         s.runningStart = p.getLong("running_start", 0);
         s.runningKind = p.getString("running_kind", "nap");
         s.lastWake = p.getLong("last_wake", 0);
+        s.wakePos = p.getInt("wake_pos", 0);
+        s.remind = p.getBoolean("remind", true);
         try {
             s.runningPauses = new JSONArray(p.getString("running_pauses", "[]"));
+            s.windows = new JSONArray(p.getString("windows", "[]"));
         } catch (JSONException ignored) {
             // keep empty
         }
@@ -94,6 +120,9 @@ final class SleepState {
             .putString("running_kind", runningKind)
             .putLong("last_wake", lastWake)
             .putString("running_pauses", runningPauses.toString())
+            .putString("windows", windows.toString())
+            .putInt("wake_pos", wakePos)
+            .putBoolean("remind", remind)
             .apply();
     }
 
@@ -133,6 +162,7 @@ final class SleepState {
         }
         s.runningPauses = pauses;
         enqueue(ctx, s.runningRecord(end));
+        s.advanceWakePos(s.runningKind);
         s.runningId = null;
         s.runningPauses = new JSONArray();
         s.lastWake = end;
@@ -206,6 +236,8 @@ final class SleepState {
                 s.runningPauses = new JSONArray();
             }
         } else {
+            // Only once per sleep, the server may also send updates of finished ones.
+            if (s.isRunning()) s.advanceWakePos(data.get("kind") != null ? data.get("kind") : s.runningKind);
             s.runningId = null;
             s.runningPauses = new JSONArray();
             long end = parseIso(data.get("end"));
@@ -225,6 +257,7 @@ final class SleepState {
     static void refreshUi(Context ctx) {
         SleepNotifier.update(ctx);
         SleepWidget.updateAll(ctx);
+        SleepReminder.schedule(ctx);
     }
 
     private static void afterChange(Context ctx, Runnable done) {

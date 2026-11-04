@@ -2,10 +2,11 @@
   import { clock } from '../lib/clock.svelte';
   import { isNative } from '../lib/native';
   import { requestNotifyPermission } from '../lib/notify';
+  import { reminder } from '../lib/remind.svelte';
   import { predictNext, toSpans } from '../lib/predict';
   import { dayStats, openPause, pausedMs, sleptMs } from '../lib/stats';
   import { store } from '../lib/store.svelte';
-  import { defaultKind, fmtDuration, fmtTime, fmtTimer, kindIcon, kindLabel, startOfDay } from '../lib/time';
+  import { addDays, defaultKind, fmtDuration, fmtTime, fmtTimer, kindIcon, kindLabel, startOfDay } from '../lib/time';
   import type { Kind, Sleep } from '../lib/types';
   import DayBar from './DayBar.svelte';
   import EditDialog from './EditDialog.svelte';
@@ -29,6 +30,22 @@
   const stats = $derived(dayStats(store.sorted, today, clock.now));
   // Only recomputed when the entries change, not every clock tick.
   const next = $derived(running ? null : predictNext(toSpans(store.sorted)));
+
+  // Daytime sleep so far vs. the average up to the same time on the last 14 days.
+  const minute = $derived(Math.floor(clock.now / 60_000) * 60_000);
+  const usualNaps = $derived.by(() => {
+    const elapsed = minute - +today;
+    const naps = store.sorted.filter((s) => s.kind === 'nap');
+    const totals: number[] = [];
+    for (let d = 1; d <= 14; d++) {
+      const from = +addDays(today, -d);
+      const dayEnd = +addDays(today, -d + 1);
+      // Skip days without any entries (nothing tracked, not "no sleep").
+      if (!store.sorted.some((s) => Date.parse(s.start) < dayEnd && (!s.end || Date.parse(s.end) > from))) continue;
+      totals.push(naps.reduce((sum, s) => sum + sleptMs(s, minute, from, from + elapsed), 0));
+    }
+    return totals.length >= 5 ? totals.reduce((a, b) => a + b, 0) / totals.length : null;
+  });
 
   function toggle() {
     navigator.vibrate?.(30);
@@ -91,10 +108,22 @@
       </div>
     {/if}
     {#if next}
-      <div class="next">
-        {next.bedtime ? '🌙 Schlafenszeit' : '☀️ Nickerchen'} ca. <strong class="tabular">{fmtTime(next.at)}</strong>
-        {#if next.at > clock.now}<span class="tabular">· in {fmtDuration(next.at - clock.now)}</span>{/if}
-      </div>
+      {#if isNative}
+        <button
+          class="next"
+          onclick={reminder.toggle.bind(reminder)}
+          aria-label={reminder.enabled ? 'Erinnerung ausschalten' : 'Erinnerung einschalten'}
+        >
+          {next.bedtime ? '🌙 Schlafenszeit' : '☀️ Nickerchen'} ca. <strong class="tabular">{fmtTime(next.at)}</strong>
+          {#if next.at > clock.now}<span class="tabular">· in {fmtDuration(next.at - clock.now)}</span>{/if}
+          <span class="bell" class:off={!reminder.enabled}>{reminder.enabled ? '🔔' : '🔕'}</span>
+        </button>
+      {:else}
+        <div class="next">
+          {next.bedtime ? '🌙 Schlafenszeit' : '☀️ Nickerchen'} ca. <strong class="tabular">{fmtTime(next.at)}</strong>
+          {#if next.at > clock.now}<span class="tabular">· in {fmtDuration(next.at - clock.now)}</span>{/if}
+        </div>
+      {/if}
     {/if}
   {/if}
 </section>
@@ -116,6 +145,17 @@
       {fmtDuration(stats.total)} Schlaf · {stats.naps} Nickerchen
     </span>
   </div>
+  {#if usualNaps !== null}
+    <div class="usual muted tabular">
+      Tagschlaf bis jetzt {fmtDuration(stats.byKind.nap)}
+      · sonst ~{fmtDuration(usualNaps)}
+      {#if Math.abs(stats.byKind.nap - usualNaps) >= 15 * 60_000}
+        <span class={stats.byKind.nap > usualNaps ? 'more' : 'less'}>
+          ({stats.byKind.nap > usualNaps ? '+' : '−'}{fmtDuration(Math.abs(stats.byKind.nap - usualNaps))})
+        </span>
+      {/if}
+    </div>
+  {/if}
   <DayBar day={today} segments={stats.segments} now={clock.now} onselect={(s) => (editing = s)} />
   <EntryList sleeps={stats.segments.map((s) => s.sleep)} onselect={(s) => (editing = s)} />
 </section>
@@ -167,6 +207,32 @@
 
   .next strong {
     color: var(--text);
+  }
+
+  button.next {
+    font: inherit;
+    font-size: 0.9rem;
+  }
+
+  .bell {
+    margin-left: 0.2rem;
+  }
+
+  .bell.off {
+    opacity: 0.5;
+  }
+
+  .usual {
+    margin-top: -0.3rem;
+    font-size: 0.8rem;
+  }
+
+  .usual .more {
+    color: #7fd1a0;
+  }
+
+  .usual .less {
+    color: var(--nap);
   }
 
   .kinds {

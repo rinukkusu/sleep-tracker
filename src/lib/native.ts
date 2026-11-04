@@ -1,4 +1,5 @@
 import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor/core';
+import type { TypicalWindow } from './predict';
 import type { Kind, Pause } from './types';
 
 /** A change made from the widget or notification while the web app wasn't looking. */
@@ -16,7 +17,14 @@ interface SleepPlugin {
   /** "permission": Android's settings for installing apps were opened instead. */
   installApk(options: { url: string }): Promise<{ status: 'permission' | 'installing' }>;
   setAuth(options: { baseUrl: string; token: string }): Promise<void>;
-  setState(options: { running: { id: string; start: number; kind: Kind; pauses: Pause[] } | null; lastWake: number | null }): Promise<void>;
+  setState(options: {
+    running: { id: string; start: number; kind: Kind; pauses: Pause[] } | null;
+    lastWake: number | null;
+    /** For the next-sleep hint in the widget and the reminder (src/lib/predict.ts) */
+    windows: (TypicalWindow | null)[];
+    wakePos: number;
+    remind: boolean;
+  }): Promise<void>;
   takePendingActions(): Promise<{ actions: PendingAction[] }>;
   requestNotificationPermission(): Promise<{ granted: boolean }>;
   bringToFront(): Promise<void>;

@@ -4,6 +4,8 @@
   import { ensurePushSubscription, syncNotification } from './lib/notify';
   import { isNative, Sleep } from './lib/native';
   import { applyNow, checkForUpdates } from './lib/ota';
+  import { toSpans, typicalWindows, wakePos } from './lib/predict';
+  import { reminder } from './lib/remind.svelte';
   import Login from './components/Login.svelte';
   import Home from './components/Home.svelte';
   import History from './components/History.svelte';
@@ -87,11 +89,15 @@
     if (!isNative || !nativeReady) return;
     const running = authed ? store.running : null;
     const lastWake = authed ? store.lastWake : null;
+    const spans = toSpans(store.sorted);
     void Sleep.setState({
       running: running
         ? { id: running.id, start: Date.parse(running.start), kind: running.kind, pauses: $state.snapshot(running.pauses ?? []) }
         : null,
       lastWake: lastWake ? Date.parse(lastWake) : null,
+      windows: typicalWindows(spans),
+      wakePos: wakePos(spans),
+      remind: reminder.enabled,
     });
   });
 
