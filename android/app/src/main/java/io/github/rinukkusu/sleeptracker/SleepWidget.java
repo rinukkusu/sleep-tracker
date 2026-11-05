@@ -115,9 +115,13 @@ public class SleepWidget extends AppWidgetProvider {
             } else {
                 v.setTextViewText(R.id.widget_label, s.lastWake > 0 ? "Wach seit" : "Wach");
                 long next = s.nextAt();
+                // The vertical widget is too narrow for the label, the icon has to do.
+                String label = s.nextIsBedtime()
+                    ? (style == Style.VERTICAL ? "🌙" : "🌙 Bettzeit")
+                    : (style == Style.VERTICAL ? "☀️" : "☀️ Nickerchen");
                 since = s.lastWake <= 0
                     ? "noch keine Einträge"
-                    : next > 0 ? (s.nextIsBedtime() ? "🌙 Bettzeit ~" : "☀️ Nickerchen ~") + SleepState.time(next) : null;
+                    : next > 0 ? label + " ~" + SleepState.time(next) : null;
             }
             v.setTextViewText(R.id.widget_since, since);
             v.setViewVisibility(R.id.widget_since, since != null ? View.VISIBLE : View.GONE);
