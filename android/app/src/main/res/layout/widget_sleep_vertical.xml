@@ -60,6 +60,7 @@
             android:id="@+id/widget_moon"
             android:layout_width="112dp"
             android:layout_height="112dp"
+            android:layout_marginTop="10dp"
             android:background="@drawable/widget_moon_button"
             android:contentDescription="Schläft"
             android:padding="20dp"
